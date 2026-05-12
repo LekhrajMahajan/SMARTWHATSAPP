@@ -78,13 +78,23 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
+    options.add_argument("--remote-debugging-port=9222")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--proxy-server='direct://'")
+    options.add_argument("--proxy-bypass-list=*")
     
     # Headless mode for cloud deployment (Render/Linux)
     if os.getenv("HEADLESS", "false").lower() == "true":
         print("🌐 Running in HEADLESS mode")
         options.add_argument("--headless=new")
         # Important for WhatsApp Web in headless mode
+        options.add_argument("window-size=1920,1080")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+    # Explicitly set Chrome binary path for Render if it exists
+    chrome_bin = "/usr/bin/google-chrome"
+    if os.path.exists(chrome_bin):
+        options.binary_location = chrome_bin
 
     # Persist login session across runs
     profile_path = os.path.abspath("chrome_profile")
