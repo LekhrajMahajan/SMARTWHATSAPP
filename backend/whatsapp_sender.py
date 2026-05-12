@@ -75,9 +75,11 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
     
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-setuid-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--single-process")
     options.add_argument("--remote-debugging-port=9222")
     options.add_argument("--disable-extensions")
     options.add_argument("--proxy-server='direct://'")
@@ -96,8 +98,15 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
     if os.path.exists(chrome_bin):
         options.binary_location = chrome_bin
 
-    # Persist login session across runs
-    profile_path = os.path.abspath("chrome_profile")
+    # Use /tmp for profile in production to avoid permission/crash issues on Render
+    if os.getenv("HEADLESS", "false").lower() == "true":
+        profile_path = "/tmp/chrome_profile"
+    else:
+        profile_path = os.path.abspath("chrome_profile")
+    
+    if not os.path.exists(profile_path):
+        os.makedirs(profile_path, exist_ok=True)
+        
     options.add_argument(f"user-data-dir={profile_path}")
 
     driver = None
