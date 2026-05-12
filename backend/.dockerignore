@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+chrome_profile/
+*.db
+.env
+*.log
+uploads/
+package-lock.json
