@@ -208,7 +208,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@app.websocket("/api/ws/{token}")
+@app.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     # Validate token
     try:
@@ -230,7 +230,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 
 # HOME API
-@app.get("/api")
+@app.get("/health")
 def home():
 
     return {
@@ -239,7 +239,7 @@ def home():
 
 
 # DOWNLOAD SAMPLE CSV
-@app.get("/api/download-sample")
+@app.get("/download-sample")
 def download_sample():
 
     return FileResponse(
@@ -250,7 +250,7 @@ def download_sample():
 
 
 # GET MESSAGE HISTORY
-@app.get("/api/messages")
+@app.get("/messages")
 def get_messages(current_user: dict = Depends(get_current_user)):
 
     messages = logs_collection.find().sort("created_at", -1)
@@ -272,7 +272,7 @@ def get_messages(current_user: dict = Depends(get_current_user)):
 
 
 # STATUS API
-@app.get("/api/status")
+@app.get("/status")
 async def get_status(current_user: dict = Depends(get_current_user)):
     from models import is_within_ist_window, get_ist_time
     
@@ -330,7 +330,7 @@ async def get_status(current_user: dict = Depends(get_current_user)):
 
 
 # UPLOAD EXCEL + SEND WHATSAPP MESSAGES
-@app.post("/api/upload")
+@app.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
     message: str = Form(...),
