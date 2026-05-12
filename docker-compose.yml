@@ -1,0 +1,40 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: smart-wa-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:latest
+    container_name: smart-wa-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: smart-wa-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/smart_whatsapp
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/chrome_profile:/app/chrome_profile
+
+  frontend:
+    build: ./frontend
+    container_name: smart-wa-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:

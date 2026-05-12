@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/container-queries";
+
+/* 
+  Global base styles
+  Most design tokens are now inlined directly in components for better portability
+  and per the user's request to avoid heavy reliance on global config files.
+*/
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0d150e; /* Fallback for dark theme */
+  color: #dce5d8;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  width: 100%;
+}
+
+/* Container padding utility */
+.px-margin {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .px-margin {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Custom Scrollbar for better aesthetics */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0d150e;
+}
+::-webkit-scrollbar-thumb {
+  background: #19221a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #25d366;
+}
+
+/* Material Icons sizing helper */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  user-select: none;
+}
+
+
+/* Custom Pulse animation for status badge */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Moving Grid Background */
+@keyframes move-grid {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+.grid-background {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(37, 211, 102, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(37, 211, 102, 0.2) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  animation: move-grid 60s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.grid-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0%, #0d150e 95%);
+  pointer-events: none;
+}
+
+/* Base Utility for Hero Glow - Simple fallback */
+.neon-hero::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(37, 211, 102, 0.1) 0%, rgba(37, 211, 102, 0) 70%);
+  z-index: -1;
+  filter: blur(40px);
+  pointer-events: none;
+}
