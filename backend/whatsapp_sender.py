@@ -106,11 +106,14 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
     options.add_argument("--blink-settings=imagesEnabled=false")
     
     # Headless mode for cloud deployment (Render/Linux)
-    if os.getenv("HEADLESS", "false").lower() == "true":
-        print("🌐 Running in HEADLESS mode")
+    # FORCING TRUE by default for Render stability
+    is_headless = os.getenv("HEADLESS", "true").lower() == "true"
+    
+    if is_headless:
+        print("🌐 Running in HEADLESS mode (Forced for stability)")
         options.add_argument("--headless=new")
-        # Important for WhatsApp Web in headless mode
-        options.add_argument("window-size=1920,1080")
+        # Smaller window size = Much less RAM usage
+        options.add_argument("--window-size=800,600")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
     # Explicitly set Chrome binary path for Render if it exists
