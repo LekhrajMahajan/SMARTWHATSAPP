@@ -142,8 +142,19 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
 
             # Initialize driver if not already open
             if not driver:
+                # System-wide chromedriver path (standard for Linux/Docker)
+                driver_path = "/usr/bin/chromedriver"
+                
+                if os.path.exists(driver_path):
+                    print(f"🚀 Using system chromedriver at {driver_path}")
+                    service = Service(executable_path=driver_path)
+                else:
+                    # Fallback for local development
+                    print("🏠 Using webdriver_manager for local development")
+                    service = Service(ChromeDriverManager().install())
+
                 driver = webdriver.Chrome(
-                    service=Service(ChromeDriverManager().install()),
+                    service=service,
                     options=options
                 )
                 wait = WebDriverWait(driver, 300)
