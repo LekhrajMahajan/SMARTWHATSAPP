@@ -59,6 +59,10 @@ users_collection = db.users
 contacts_collection = db.contacts
 logs_collection = db.message_logs
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Smart WhatsApp Sender API is running"}
+
 # AUTHENTICATION CONFIG
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -146,7 +150,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 
 # AUTH ROUTES
-@app.post("/api/register")
+@app.post("/register")
 async def register(
     username: str = Form(...),
     email: str = Form(...),
@@ -165,7 +169,7 @@ async def register(
     users_collection.insert_one(new_user.model_dump())
     return {"message": "User registered successfully"}
 
-@app.post("/api/token")
+@app.post("/token")
 async def login(
     username: str = Form(...), # OAuth2 uses 'username' field for login (which is our email in the frontend)
     password: str = Form(...)
