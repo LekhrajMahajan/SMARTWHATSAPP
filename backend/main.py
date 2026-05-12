@@ -59,7 +59,7 @@ users_collection = db.users
 contacts_collection = db.contacts
 logs_collection = db.message_logs
 
-@app.get("/")
+@app.get("/", methods=["GET", "HEAD"])
 async def root():
     return {"status": "ok", "message": "Smart WhatsApp Sender API is running"}
 

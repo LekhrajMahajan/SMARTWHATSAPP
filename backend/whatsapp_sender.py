@@ -95,8 +95,15 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
     options.add_argument("--mute-audio")
     options.add_argument("--hide-scrollbars")
     options.add_argument("--remote-debugging-port=9222")
-    options.add_argument("--proxy-server='direct://'")
     options.add_argument("--proxy-bypass-list=*")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-dev-config")
+    
+    # Disable images to save massive RAM
+    prefs = {"profile.managed_default_content_settings.images": 2}
+    options.add_experimental_option("prefs", prefs)
+    options.add_argument("--blink-settings=imagesEnabled=false")
     
     # Headless mode for cloud deployment (Render/Linux)
     if os.getenv("HEADLESS", "false").lower() == "true":
