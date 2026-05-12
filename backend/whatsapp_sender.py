@@ -10,7 +10,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import random
 import os
-import pyperclip
 from datetime import datetime, timedelta
 from models import get_ist_time, is_within_ist_window
 
@@ -18,14 +17,16 @@ from models import get_ist_time, is_within_ist_window
 def type_message_with_newlines(driver, message_box, message):
     """
     Types a message that may contain paragraphs and links.
-    Uses clipboard paste to handle the entire message at once.
-    This preserves all formatting, emojis, and ensures links are clickable.
+    Uses direct send_keys with SHIFT+ENTER for newlines.
+    This works on headless Linux servers where pyperclip (clipboard) is not available.
     """
-    # Copy the entire message (including newlines) to clipboard
-    pyperclip.copy(message)
-
-    # Ctrl+V to paste the whole block
-    message_box.send_keys(Keys.CONTROL, 'v')
+    # Split message by newline and send each part
+    lines = message.split('\n')
+    for i, line in enumerate(lines):
+        message_box.send_keys(line)
+        if i < len(lines) - 1:
+            # Add a newline without sending the message
+            message_box.send_keys(Keys.SHIFT, Keys.ENTER)
     
     # Trigger link recognition by sending a space and backspace
     # This 'wakes up' the WhatsApp input handler to linkify URLs
