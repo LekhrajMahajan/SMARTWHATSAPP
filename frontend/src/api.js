@@ -1,5 +1,5 @@
 // src/api.js – Centralised API service layer
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+export const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
@@ -15,7 +15,7 @@ export async function uploadAndSend(file, message) {
   formData.append('file', file);
   formData.append('message', message);
 
-  const res = await fetch(`${BASE_URL}/api/upload`, {
+  const res = await fetch(`${BASE_URL}/upload`, {
     method: 'POST',
     headers: {
       ...getAuthHeaders()
@@ -42,7 +42,7 @@ export async function uploadAndSend(file, message) {
  * Fetch all sent message logs from the database
  */
 export async function fetchMessageLogs() {
-  const res = await fetch(`${BASE_URL}/api/messages`, {
+  const res = await fetch(`${BASE_URL}/messages`, {
     headers: getAuthHeaders()
   });
 
@@ -63,7 +63,7 @@ export async function fetchMessageLogs() {
  * GET /download-sample
  */
 export function downloadSampleCSV() {
-  window.open(`${BASE_URL}/api/download-sample`, '_blank');
+  window.open(`${BASE_URL}/download-sample`, '_blank');
 }
 
 /**
@@ -80,7 +80,7 @@ export async function checkHealth() {
  * Clear all campaign logs
  */
 export async function clearMessageLogs() {
-  const res = await fetch(`${BASE_URL}/api/messages`, {
+  const res = await fetch(`${BASE_URL}/messages`, {
     method: 'DELETE',
     headers: getAuthHeaders()
   });
@@ -93,7 +93,7 @@ export async function clearMessageLogs() {
  * Fetch daily limits, cooldowns, and window state
  */
 export async function getStatus() {
-  const res = await fetch(`${BASE_URL}/api/status`, {
+  const res = await fetch(`${BASE_URL}/status`, {
     headers: getAuthHeaders()
   });
 

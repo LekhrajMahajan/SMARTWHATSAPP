@@ -1,6 +1,6 @@
-// UploadPage.jsx – Main process page: upload Excel + write message + send + view logs
+// UploadPage.jsx - Main process page: upload Excel + write message + send + view logs
 import { useState, useEffect, useRef } from 'react';
-import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus } from '../api';
+import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, BASE_URL } from '../api';
 
 const ExpandableMessage = ({ text }) => {
   const [expanded, setExpanded] = useState(false);
@@ -70,7 +70,8 @@ const UploadPage = () => {
       if (!token) return;
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${protocol}//${window.location.host}/api/ws/${token}`);
+      const wsHost = BASE_URL ? BASE_URL.replace(/^https?:\/\//, '') : window.location.host;
+      const ws = new WebSocket(`${protocol}//${wsHost}/ws/${token}`);
 
       ws.onmessage = (event) => {
         if (cancelled) return;
@@ -131,7 +132,7 @@ const UploadPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const res = await fetch('/api');
+        const res = await fetch(`${BASE_URL}/`);
         if (res.ok) {
           setBackendOnline(true);
         } else {

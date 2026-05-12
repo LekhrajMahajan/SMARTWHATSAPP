@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { BASE_URL } from '../api';
 import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
@@ -30,7 +31,7 @@ const LoginPage = () => {
         formData.append('username', email); 
         formData.append('password', password);
 
-        const response = await axios.post('/api/token', formData);
+        const response = await axios.post(`${BASE_URL}/token`, formData);
         localStorage.setItem('token', response.data.access_token);
         navigate('/');
       } else {
@@ -39,7 +40,7 @@ const LoginPage = () => {
         formData.append('email', email);
         formData.append('password', password);
 
-        await axios.post('/api/register', formData);
+        await axios.post(`${BASE_URL}/register`, formData);
         setIsLogin(true);
         setError('Registration successful! Please login.');
       }
