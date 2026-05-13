@@ -1,3 +1,12 @@
+# --- Stage 1: Build Frontend ---
+FROM node:20-slim AS frontend-build
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ .
+RUN npm run build
+
+# --- Stage 2: Final Backend Image ---
 FROM python:3.11-slim
 
 # Install Chromium and Chromium-driver
@@ -21,14 +30,20 @@ ENV HOME=/home/user \
 
 WORKDIR $HOME/app
 
-# Copy requirements and install
-COPY --chown=user requirements.txt .
+# Copy backend requirements and install
+COPY --chown=user backend/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Copy application code
-COPY --chown=user . .
+# Copy backend code
+COPY --chown=user backend/ .
 
-# Create uploads and profile directory with correct permissions
+# Copy built frontend from Stage 1
+COPY --chown=user --from=frontend-build /frontend/dist ./frontend_dist
+
+# Override the static files path in main.py logic (handled via env or relative path)
+# In your main.py, ensure it looks for 'frontend_dist' 
+
+# Create uploads and profile directory
 RUN mkdir -p uploads chrome_profile
 
 EXPOSE 7860

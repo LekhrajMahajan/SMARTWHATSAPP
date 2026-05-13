@@ -458,16 +458,17 @@ async def upload_file(
         }
 
 # --- PRODUCTION STATIC FILE SERVING ---
-# Resolve frontend build path
+# Resolve frontend build path - check local first, then production structure
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+if not os.path.exists(frontend_dist):
+    frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend_dist"))
 
 if os.path.exists(frontend_dist):
-    # API routes are already defined above, so "/" mount will catch everything else
+    print(f"✅ Serving frontend from: {frontend_dist}")
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
     
-    # Catch-all for React Router navigation (404s in static files)
     @app.exception_handler(404)
     async def spa_handler(request, __):
         return FileResponse(os.path.join(frontend_dist, "index.html"))
 else:
-    print(f"⚠️ Warning: Frontend dist folder not found at {frontend_dist}. UI will not be served.")
+    print(f"⚠️ Warning: Frontend dist folder not found. UI will not be served.")
