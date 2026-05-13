@@ -226,19 +226,19 @@ const UploadPage = () => {
       if (data.success) {
         setResult({
           success: true,
-          text: `✅ Messages process finished for ${data.contacts} contacts!`,
+          text: `🚀 Campaign started for ${data.contacts} contacts! Waiting for WhatsApp QR...`,
         });
-        // Refresh the main logs table
-        const updated = await fetchMessageLogs();
-        setLogs(updated);
+        // Note: We do NOT setLoading(false) here because we are waiting 
+        // for the background process to show the QR code via WebSocket.
       } else {
         setResult({ success: false, text: `❌ Error: ${data.message}` });
+        setLoading(false);
       }
     } catch (err) {
       setResult({ success: false, text: `❌ Network error: ${err.message}` });
-    } finally {
       setLoading(false);
     }
+    // finally block removed to prevent loading state from closing prematurely
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────

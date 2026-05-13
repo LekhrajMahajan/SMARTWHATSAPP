@@ -476,8 +476,8 @@ async def upload_file(
 
         return {
             "success": True,
-            "message": "Campaign started in background. You can monitor progress on the dashboard.",
-            "total_contacts": len(contacts)
+            "message": "Campaign started in background. Please wait for the QR code to appear.",
+            "contacts": len(contacts)
         }
 
     except Exception as e:
