@@ -30,13 +30,13 @@ def type_message_with_newlines(driver, message_box, message):
     
     # Trigger link recognition by sending a space and backspace
     # This 'wakes up' the WhatsApp input handler to linkify URLs
-    time.sleep(0.2)
+    time.sleep(0.5)
     message_box.send_keys(Keys.SPACE)
-    time.sleep(0.1)
+    time.sleep(0.2)
     message_box.send_keys(Keys.BACKSPACE)
     
     # Wait for link preview/processing
-    time.sleep(0.5)
+    time.sleep(1.0)
 
 
 def wait_for_message_to_send(driver, wait, timeout=30):
@@ -280,31 +280,31 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                                 print(f"[{username}] ⚠️ Phone number {number} is officially invalid on WhatsApp.")
                                 break
                                 
-                            time.sleep(0.5)
+                            time.sleep(2)
                         except Exception as e:
                             print(f"Polling error: {e}")
-                            time.sleep(0.5)
+                            time.sleep(2)
 
                     if not message_box:
                         raise Exception("Message box not found (Possible invalid number or extremely slow connection)")
 
-                    time.sleep(0.8) # Balanced safety for cloud environment
+                    time.sleep(2.5) # Extra safety for cloud environment
                     message_box.click()
-                    time.sleep(0.2)
+                    time.sleep(0.5)
                     type_message_with_newlines(driver, message_box, message)
-                    time.sleep(0.3)
+                    time.sleep(1.0)
                     message_box.send_keys(Keys.ENTER)
                     
                     # Confirm send
                     wait_for_message_to_send(driver, send_wait)
-                    time.sleep(random.uniform(0.5, 1.5))
+                    time.sleep(random.uniform(2, 4))
 
                     print(f"[{username}] ✅ Message sent to {name}")
                     results["sent_count"] += 1
                     if on_status:
                         on_status(contact, "Sent")
                     
-                    time.sleep(random.uniform(1, 3))
+                    time.sleep(random.uniform(3, 6))
 
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")
