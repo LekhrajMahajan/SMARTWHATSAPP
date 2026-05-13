@@ -65,6 +65,9 @@ users_collection = db.users
 contacts_collection = db.contacts
 logs_collection = db.message_logs
 
+# Track active campaigns to prevent per-user concurrency issues
+active_campaigns = set()
+
 @app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "ok", "message": "Smart WhatsApp Sender API is running"}
@@ -365,117 +368,116 @@ async def upload_file(
     current_user: dict = Depends(get_current_user)
 ):
 
-    try:
+    # PREVENT CONCURRENT CAMPAIGNS FOR SAME USER
+    username = current_user["username"]
+    if username in active_campaigns:
+        raise HTTPException(status_code=400, detail="A campaign is already running for your account. Please wait for it to finish.")
 
+    try:
         # READ CONTACTS
         contacts = read_contacts(file.file)
+        
+        if not contacts:
+            raise HTTPException(status_code=400, detail="No valid contacts found in the file.")
 
-        print("TOTAL CONTACTS:", len(contacts))
+        print(f"[{username}] TOTAL CONTACTS:", len(contacts))
 
-        # SAVE CONTACTS
+        # SAVE CONTACTS (Optional: Keep history of uploaded contacts)
         contacts_to_insert = []
         for contact in contacts:
-
             new_contact = Contact(
-                username=current_user["username"],
+                username=username,
                 name=contact["name"],
                 number=str(contact["number"])
             )
-
             contacts_to_insert.append(new_contact.model_dump())
 
         if contacts_to_insert:
             contacts_collection.insert_many(contacts_to_insert)
 
-        # Capture the main event loop to use in the callback thread
+        # Mark campaign as active
+        active_campaigns.add(username)
+        
+        # Capture current event loop for thread-safe broadcasts
         main_loop = asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
 
-        # Define status callback for real-time updates
-        def on_status_update(contact, status):
-            
+        # Run send_messages in background (don't await)
+        async def run_campaign():
             try:
-                log = MessageLog(
-                    username=current_user["username"],
-                    name=contact["name"],
-                    number=str(contact["number"]),
-                    message=message.replace(
-                        "{name}",
-                        contact["name"]
-                    ),
-                    status=status
-                )
-                
-                # PyMongo is thread-safe, so we can use the main connection directly
-                result = logs_collection.insert_one(log.model_dump())
-                
-                # Prepare data for WebSocket
-                log_data = {
-                    "id": str(result.inserted_id),
-                    "name": log.name,
-                    "number": log.number,
-                    "message": log.message,
-                    "status": log.status,
-                    "created_at": str(log.created_at)
-                }
-                
-                # Broadcast via the main event loop
+                # Define status callback for real-time updates
+                def on_status_update(contact, status):
+                    try:
+                        log = MessageLog(
+                            username=username,
+                            name=contact["name"],
+                            number=str(contact["number"]),
+                            message=message.replace("{name}", contact["name"]),
+                            status=status
+                        )
+                        result = logs_collection.insert_one(log.model_dump())
+                        
+                        log_data = {
+                            "id": str(result.inserted_id),
+                            "name": log.name,
+                            "number": log.number,
+                            "message": log.message,
+                            "status": log.status,
+                            "created_at": str(log.created_at)
+                        }
+                        
+                        asyncio.run_coroutine_threadsafe(
+                            manager.broadcast({"type": "LOG_UPDATE", "data": log_data}, username=username),
+                            main_loop
+                        )
+                    except Exception as e:
+                        print(f"[{username}] Error in status callback: {e}")
+
+                # Define broadcast helper for the sender thread
+                def broadcast_wrapper(msg):
+                    if msg["type"] == "COOLDOWN_START":
+                        seconds = msg["data"]["seconds"]
+                        new_cooldown = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+                        set_cooldown_until(username, new_cooldown)
+                    
+                    asyncio.run_coroutine_threadsafe(
+                        manager.broadcast(msg, username=username),
+                        main_loop
+                    )
+
+                # Broadcast start
                 asyncio.run_coroutine_threadsafe(
-                    manager.broadcast({"type": "LOG_UPDATE", "data": log_data}, username=current_user["username"]),
+                    manager.broadcast({"type": "PROCESS_STARTED", "data": {}}, username=username),
                     main_loop
                 )
+
+                # Execute in executor
+                await loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        send_messages,
+                        contacts,
+                        message,
+                        username=username,
+                        on_status=on_status_update,
+                        logs_collection=logs_collection,
+                        broadcast_func=broadcast_wrapper
+                    )
+                )
             except Exception as e:
-                print(f"Error in status callback: {e}")
+                print(f"[{username}] Campaign Error: {e}")
+            finally:
+                if username in active_campaigns:
+                    active_campaigns.remove(username)
+                print(f"[{username}] Campaign task finished and lock released.")
 
-        # Run blocking send_messages in a separate thread
-        loop = asyncio.get_running_loop()
-        # Define broadcast helper for the sender thread
-        def broadcast_wrapper(message):
-            if message["type"] == "COOLDOWN_START":
-                seconds = message["data"]["seconds"]
-                new_cooldown = datetime.now(timezone.utc) + timedelta(seconds=seconds)
-                set_cooldown_until(current_user["username"], new_cooldown)
-            
-            asyncio.run_coroutine_threadsafe(
-                manager.broadcast(message, username=current_user["username"]),
-                main_loop
-            )
-
-        # Broadcast that the process has started
-        asyncio.run_coroutine_threadsafe(
-            manager.broadcast({"type": "PROCESS_STARTED", "data": {}}, username=current_user["username"]),
-            main_loop
-        )
-
-        # Run blocking send_messages in a separate thread
-        loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(
-            None, 
-            functools.partial(
-                send_messages,
-                contacts,
-                message,
-                username=current_user["username"],
-                on_status=on_status_update,
-                logs_collection=logs_collection,
-                broadcast_func=broadcast_wrapper
-            )
-        )
-
-        status_msg = "Campaign processed"
-        if results["status"] == "login_failed":
-            status_msg = "WhatsApp login failed or timed out"
-        elif results["status"] == "daily_limit_reached":
-            status_msg = "Daily limit of 800 reached"
-        elif results["status"] == "window_closed":
-            status_msg = "Process paused: window closed"
+        # Fire and forget the task
+        asyncio.create_task(run_campaign())
 
         return {
-            "success": results["status"] == "completed",
-            "contacts": results["sent_count"],
-            "failed": results["failed_count"],
-            "total": results["total_attempted"],
-            "status": results["status"],
-            "message": status_msg
+            "success": True,
+            "message": "Campaign started in background. You can monitor progress on the dashboard.",
+            "total_contacts": len(contacts)
         }
 
     except Exception as e:

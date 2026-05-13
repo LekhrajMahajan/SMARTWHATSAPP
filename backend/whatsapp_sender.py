@@ -94,7 +94,8 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
     options.add_argument("--no-first-run")
     options.add_argument("--mute-audio")
     options.add_argument("--hide-scrollbars")
-    options.add_argument("--remote-debugging-port=9222")
+    # REMOVE remote-debugging-port as it causes conflicts between users
+    # options.add_argument("--remote-debugging-port=9222")
     options.add_argument("--proxy-bypass-list=*")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-software-rasterizer")
@@ -176,26 +177,28 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
 
             # Initialize driver if not already open
             if not driver:
+                print(f"[{username}] 🌐 Running in HEADLESS mode (Forced for stability)")
                 # System-wide chromedriver path (standard for Linux/Docker)
                 driver_path = "/usr/bin/chromedriver"
                 
                 if os.path.exists(driver_path):
-                    print(f"🚀 Using system chromedriver at {driver_path}")
+                    print(f"[{username}] 🚀 Using system chromedriver at {driver_path}")
                     service = Service(executable_path=driver_path)
                 else:
                     # Fallback for local development
-                    print("🏠 Using webdriver_manager for local development")
+                    print(f"[{username}] 🏠 Using webdriver_manager for local development")
                     service = Service(ChromeDriverManager().install())
 
                 driver = webdriver.Chrome(
                     service=service,
                     options=options
                 )
+                print(f"[{username}] ✅ Browser started successfully.")
                 wait = WebDriverWait(driver, 300)
                 send_wait = WebDriverWait(driver, 30)
 
                 driver.get("https://web.whatsapp.com")
-                print("Waiting for WhatsApp login...")
+                print(f"[{username}] Waiting for WhatsApp login...")
                 
                 # QR Code relay for headless mode
                 login_check_iterations = 0
@@ -203,7 +206,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     try:
                         # Check if logged in
                         if driver.find_elements(By.ID, "pane-side"):
-                            print("✅ WhatsApp Logged In Successfully")
+                            print(f"[{username}] ✅ WhatsApp Logged In Successfully")
                             break
                         
                         # Look for QR code
@@ -216,19 +219,19 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                                     "type": "QR_CODE",
                                     "data": {"image": f"data:image/png;base64,{qr_base64}"}
                                 })
-                                print("📲 QR Code sent to frontend")
+                                print(f"[{username}] 📲 QR Code sent to frontend")
                         except Exception as e:
-                            print(f"Error capturing QR: {e}")
+                            print(f"[{username}] Error capturing QR: {e}")
                         
                     except Exception as e:
-                        print(f"Error during login check: {e}")
+                        print(f"[{username}] Error during login check: {e}")
                     
                     time.sleep(5)
                     login_check_iterations += 1
                 
                 # Final check after loop
                 if not driver.find_elements(By.ID, "pane-side"):
-                    print("❌ Login timeout or failed")
+                    print(f"[{username}] ❌ Login timeout or failed")
                     if driver: driver.quit()
                     results["status"] = "login_failed"
                     return results
@@ -252,7 +255,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         
                     message = template.replace("{name}", name)
 
-                    print(f"Sending to {name} ({number})")
+                    print(f"[{username}] Sending to {name} ({number})")
                     url = f"https://web.whatsapp.com/send?phone={number}"
                     driver.get(url)
 
@@ -274,7 +277,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                             page_text = driver.page_source.lower()
                             if "phone number shared via url is invalid" in page_text or \
                                "url is invalid" in page_text:
-                                print(f"⚠️ Phone number {number} is officially invalid on WhatsApp.")
+                                print(f"[{username}] ⚠️ Phone number {number} is officially invalid on WhatsApp.")
                                 break
                                 
                             time.sleep(2)
@@ -296,7 +299,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     wait_for_message_to_send(driver, send_wait)
                     time.sleep(random.uniform(2, 4))
 
-                    print(f"✅ Message sent to {name}")
+                    print(f"[{username}] ✅ Message sent to {name}")
                     results["sent_count"] += 1
                     if on_status:
                         on_status(contact, "Sent")
@@ -304,13 +307,13 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     time.sleep(random.uniform(3, 6))
 
                 except Exception as e:
-                    print(f"❌ Failed for {name}: {e}")
+                    print(f"[{username}] ❌ Failed for {name}: {e}")
                     results["failed_count"] += 1
                     if on_status:
                         on_status(contact, "Failed")
 
             # AFTER BATCH
-            print(f"✅ Batch completed.")
+            print(f"[{username}] ✅ Batch completed.")
             
             # Check if there are more contacts
             if i + 100 < total_contacts and results["status"] == "completed":
@@ -318,7 +321,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                 if broadcast_func:
                     broadcast_func({"type": "COOLDOWN_START", "data": {"seconds": 3600}})
                 
-                print("💤 Batch finished. Closing browser for 1-hour cooldown...")
+                print(f"[{username}] 💤 Batch finished. Closing browser for 1-hour cooldown...")
                 if driver:
                     driver.quit()
                     driver = None
