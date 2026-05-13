@@ -189,21 +189,40 @@ async def login(
 # WEBSOCKET CONNECTION MANAGER
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        # Map username -> list of active WebSockets
+        self.active_connections: dict[str, List[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, username: str):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        if username not in self.active_connections:
+            self.active_connections[username] = []
+        self.active_connections[username].append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    def disconnect(self, websocket: WebSocket, username: str):
+        if username in self.active_connections:
+            if websocket in self.active_connections[username]:
+                self.active_connections[username].remove(websocket)
+            if not self.active_connections[username]:
+                del self.active_connections[username]
 
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except Exception:
-                pass
+    async def broadcast(self, message: dict, username: str = None):
+        """Broadcasts to all connections if username is None, else only to that user."""
+        if username:
+            # Targeted broadcast
+            connections = self.active_connections.get(username, [])
+            for connection in connections:
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    pass
+        else:
+            # Global broadcast
+            for user_conns in self.active_connections.values():
+                for connection in user_conns:
+                    try:
+                        await connection.send_json(message)
+                    except Exception:
+                        pass
 
 manager = ConnectionManager()
 
@@ -221,12 +240,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         await websocket.close(code=1008)
         return
 
-    await manager.connect(websocket)
+    await manager.connect(websocket, username)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, username)
 
 
 # HOME API
@@ -253,7 +272,7 @@ def download_sample():
 @app.get("/messages")
 def get_messages(current_user: dict = Depends(get_current_user)):
 
-    messages = logs_collection.find().sort("created_at", -1)
+    messages = logs_collection.find({"username": current_user["username"]}).sort("created_at", -1)
 
     data = []
 
@@ -292,7 +311,7 @@ async def get_status(current_user: dict = Depends(get_current_user)):
     # Get daily count (Cache this for 30 seconds to reduce DB load)
     # We use a custom cache key or just manual redis check
     ist_now = get_ist_time()
-    cache_key = f"sent_today_{ist_now.strftime('%Y-%m-%d')}"
+    cache_key = f"sent_today_{current_user['username']}_{ist_now.strftime('%Y-%m-%d')}"
     sent_today = None
     
     if REDIS_AVAILABLE:
@@ -304,6 +323,7 @@ async def get_status(current_user: dict = Depends(get_current_user)):
     if sent_today is None:
         today_start = ist_now.replace(hour=0, minute=0, second=0, microsecond=0)
         sent_today = logs_collection.count_documents({
+            "username": current_user["username"],
             "status": "Sent",
             "created_at": {"$gte": today_start}
         })
@@ -349,6 +369,7 @@ async def upload_file(
         for contact in contacts:
 
             new_contact = Contact(
+                username=current_user["username"],
                 name=contact["name"],
                 number=str(contact["number"])
             )
@@ -366,6 +387,7 @@ async def upload_file(
             
             try:
                 log = MessageLog(
+                    username=current_user["username"],
                     name=contact["name"],
                     number=str(contact["number"]),
                     message=message.replace(
@@ -390,7 +412,7 @@ async def upload_file(
                 
                 # Broadcast via the main event loop
                 asyncio.run_coroutine_threadsafe(
-                    manager.broadcast({"type": "LOG_UPDATE", "data": log_data}),
+                    manager.broadcast({"type": "LOG_UPDATE", "data": log_data}, username=current_user["username"]),
                     main_loop
                 )
             except Exception as e:
@@ -406,13 +428,13 @@ async def upload_file(
                 set_cooldown_until(current_user["username"], new_cooldown)
             
             asyncio.run_coroutine_threadsafe(
-                manager.broadcast(message),
+                manager.broadcast(message, username=current_user["username"]),
                 main_loop
             )
 
         # Broadcast that the process has started
         asyncio.run_coroutine_threadsafe(
-            manager.broadcast({"type": "PROCESS_STARTED", "data": {}}),
+            manager.broadcast({"type": "PROCESS_STARTED", "data": {}}, username=current_user["username"]),
             main_loop
         )
 
@@ -424,6 +446,7 @@ async def upload_file(
                 send_messages,
                 contacts,
                 message,
+                username=current_user["username"],
                 on_status=on_status_update,
                 logs_collection=logs_collection,
                 broadcast_func=broadcast_wrapper

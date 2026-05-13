@@ -17,10 +17,12 @@ class User(BaseModel):
     hashed_password: str
 
 class Contact(BaseModel):
+    username: str
     name: str
     number: str
 
 class MessageLog(BaseModel):
+    username: str
     name: str
     number: str
     message: str

@@ -58,7 +58,7 @@ def wait_for_message_to_send(driver, wait, timeout=30):
         return False
 
 
-def send_messages(contacts, template, on_status=None, logs_collection=None, broadcast_func=None):
+def send_messages(contacts, template, username="default", on_status=None, logs_collection=None, broadcast_func=None):
     """
     Sends messages with specific restrictions:
     - Only between 10 AM and 6 PM IST.
@@ -123,10 +123,11 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
             break
 
     # Use /tmp for profile in production to avoid permission/crash issues on Render
+    # Append username to make it unique per user
     if os.getenv("HEADLESS", "false").lower() == "true":
-        profile_path = "/tmp/chrome_profile"
+        profile_path = f"/tmp/chrome_profile_{username}"
     else:
-        profile_path = os.path.abspath("chrome_profile")
+        profile_path = os.path.abspath(f"chrome_profile_{username}")
     
     if not os.path.exists(profile_path):
         os.makedirs(profile_path, exist_ok=True)
