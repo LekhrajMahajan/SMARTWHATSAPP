@@ -59,8 +59,8 @@ users_collection = db.users
 contacts_collection = db.contacts
 logs_collection = db.message_logs
 
-@app.api_route("/", methods=["GET", "HEAD"])
-async def root():
+@app.api_route("/api/health", methods=["GET", "HEAD"])
+async def health_check():
     return {"status": "ok", "message": "Smart WhatsApp Sender API is running"}
 
 # AUTHENTICATION CONFIG

@@ -116,10 +116,11 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
         options.add_argument("--window-size=800,600")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-    # Explicitly set Chrome binary path for Render if it exists
-    chrome_bin = "/usr/bin/google-chrome"
-    if os.path.exists(chrome_bin):
-        options.binary_location = chrome_bin
+    # Explicitly set Chrome binary path for Linux environments
+    for path in ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"]:
+        if os.path.exists(path):
+            options.binary_location = path
+            break
 
     # Use /tmp for profile in production to avoid permission/crash issues on Render
     if os.getenv("HEADLESS", "false").lower() == "true":
