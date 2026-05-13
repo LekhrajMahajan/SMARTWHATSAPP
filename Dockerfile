@@ -43,8 +43,8 @@ COPY --chown=user --from=frontend-build /frontend/dist ./frontend_dist
 # Override the static files path in main.py logic (handled via env or relative path)
 # In your main.py, ensure it looks for 'frontend_dist' 
 
-# Create uploads and profile directory
-RUN mkdir -p uploads chrome_profile
+# Create uploads and profile directory (ensuring they are directories)
+RUN rm -rf uploads chrome_profile && mkdir -p uploads chrome_profile
 
 EXPOSE 7860
 

@@ -1,0 +1,15 @@
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.db
+.env
+*.log
+ngrok.exe
+.git/
+.github/
+frontend/dist/
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/chrome_profile/*
+!backend/chrome_profile/.gitkeep
