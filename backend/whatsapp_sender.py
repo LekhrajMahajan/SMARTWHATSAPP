@@ -207,15 +207,18 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                             break
                         
                         # Look for QR code
-                        qr_elements = driver.find_elements(By.CSS_SELECTOR, "canvas")
-                        if qr_elements and broadcast_func:
-                            # Take screenshot of the QR code canvas
-                            qr_base64 = qr_elements[0].screenshot_as_base64
-                            broadcast_func({
-                                "type": "QR_CODE",
-                                "data": {"image": f"data:image/png;base64,{qr_base64}"}
-                            })
-                            print("📲 QR Code sent to frontend")
+                        try:
+                            qr_elements = driver.find_elements(By.CSS_SELECTOR, "canvas")
+                            if qr_elements and broadcast_func:
+                                # Take screenshot of the QR code canvas
+                                qr_base64 = qr_elements[0].screenshot_as_base64
+                                broadcast_func({
+                                    "type": "QR_CODE",
+                                    "data": {"image": f"data:image/png;base64,{qr_base64}"}
+                                })
+                                print("📲 QR Code sent to frontend")
+                        except Exception as e:
+                            print(f"Error capturing QR: {e}")
                         
                     except Exception as e:
                         print(f"Error during login check: {e}")
@@ -260,25 +263,29 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     while time.time() - start_time < 60:
                         try:
                             # Check if the message box is present
+                            # XPath targets the standard WhatsApp message input
                             elements = driver.find_elements(By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')
                             if elements and elements[0].is_displayed():
                                 message_box = elements[0]
                                 break
                             
-                            # Check for "Starting chat" or "Invalid number" popups
-                            if driver.find_elements(By.XPATH, "//*[contains(text(), 'invalid')]") or \
-                               driver.find_elements(By.XPATH, "//*[contains(text(), 'could not be found')]"):
-                                print(f"⚠️ Phone number {number} appears to be invalid for WhatsApp.")
+                            # Check specifically for the "Phone number shared via url is invalid" modal text
+                            # WhatsApp uses specific text for this
+                            page_text = driver.page_source.lower()
+                            if "phone number shared via url is invalid" in page_text or \
+                               "url is invalid" in page_text:
+                                print(f"⚠️ Phone number {number} is officially invalid on WhatsApp.")
                                 break
                                 
                             time.sleep(2)
-                        except Exception:
+                        except Exception as e:
+                            print(f"Polling error: {e}")
                             time.sleep(2)
 
                     if not message_box:
-                        raise Exception("Message box not found or timeout reached (Invalid number or slow load)")
+                        raise Exception("Message box not found (Possible invalid number or extremely slow connection)")
 
-                    time.sleep(2.0) # Extra safety for headless
+                    time.sleep(2.5) # Extra safety for cloud environment
                     message_box.click()
                     time.sleep(0.5)
                     type_message_with_newlines(driver, message_box, message)

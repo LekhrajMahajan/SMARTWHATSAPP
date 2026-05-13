@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +18,9 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 import redis
 from fastapi_cache import FastAPICache
@@ -38,7 +41,10 @@ except Exception as e:
     redis_client = None
 
 # CREATE FASTAPI APP
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ENABLE CORS
 app.add_middleware(
@@ -351,7 +357,9 @@ async def get_status(current_user: dict = Depends(get_current_user)):
 
 # UPLOAD EXCEL + SEND WHATSAPP MESSAGES
 @app.post("/upload")
+@limiter.limit("5/minute")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     message: str = Form(...),
     current_user: dict = Depends(get_current_user)
