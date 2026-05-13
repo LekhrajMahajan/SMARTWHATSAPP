@@ -244,24 +244,45 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     number = str(contact["number"]).strip()
                     message = template.replace("{name}", name)
 
-                    print(f"Sending to {name}")
+                    print(f"Sending to {name} ({number})")
                     url = f"https://web.whatsapp.com/send?phone={number}"
                     driver.get(url)
 
-                    message_box = wait.until(
-                        EC.element_to_be_clickable(
-                            (By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')
-                        )
-                    )
-                    time.sleep(1.5)
+                    # Wait for the message box with a more reasonable timeout (60s)
+                    # and check for common failure modals
+                    message_box = None
+                    start_time = time.time()
+                    while time.time() - start_time < 60:
+                        try:
+                            # Check if the message box is present
+                            elements = driver.find_elements(By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')
+                            if elements and elements[0].is_displayed():
+                                message_box = elements[0]
+                                break
+                            
+                            # Check for "Starting chat" or "Invalid number" popups
+                            if driver.find_elements(By.XPATH, "//*[contains(text(), 'invalid')]") or \
+                               driver.find_elements(By.XPATH, "//*[contains(text(), 'could not be found')]"):
+                                print(f"⚠️ Phone number {number} appears to be invalid for WhatsApp.")
+                                break
+                                
+                            time.sleep(2)
+                        except Exception:
+                            time.sleep(2)
+
+                    if not message_box:
+                        raise Exception("Message box not found or timeout reached (Invalid number or slow load)")
+
+                    time.sleep(2.0) # Extra safety for headless
                     message_box.click()
-                    time.sleep(0.3)
-                    type_message_with_newlines(driver, message_box, message)
                     time.sleep(0.5)
+                    type_message_with_newlines(driver, message_box, message)
+                    time.sleep(1.0)
                     message_box.send_keys(Keys.ENTER)
                     
+                    # Confirm send
                     wait_for_message_to_send(driver, send_wait)
-                    time.sleep(random.uniform(1.5, 2.5))
+                    time.sleep(random.uniform(2, 4))
 
                     print(f"✅ Message sent to {name}")
                     results["sent_count"] += 1
