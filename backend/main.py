@@ -238,18 +238,26 @@ manager = ConnectionManager()
 
 @app.websocket("/ws/{token}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
+    await websocket.accept()
     # Validate token
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if not username:
+            print(f"WS Error: No username in token")
             await websocket.close(code=1008)
             return
-    except JWTError:
+    except JWTError as e:
+        print(f"WS Auth Error: {e}")
         await websocket.close(code=1008)
         return
 
-    await manager.connect(websocket, username)
+    # Once validated, manage the connection
+    if username not in manager.active_connections:
+        manager.active_connections[username] = []
+    manager.active_connections[username].append(websocket)
+    
+    print(f"[{username}] WebSocket connected")
     try:
         while True:
             await websocket.receive_text()
