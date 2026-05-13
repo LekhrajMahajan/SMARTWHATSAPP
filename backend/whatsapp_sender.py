@@ -242,6 +242,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                 try:
                     name = contact["name"]
                     number = str(contact["number"]).strip()
+                    
+                    # Ensure number is in international format (default to 91 for 10 digits)
+                    if len(number) == 10 and number.isdigit():
+                        number = "91" + number
+                        
                     message = template.replace("{name}", name)
 
                     print(f"Sending to {name} ({number})")
