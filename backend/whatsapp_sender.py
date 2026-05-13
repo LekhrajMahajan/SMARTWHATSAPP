@@ -195,10 +195,35 @@ def send_messages(contacts, template, on_status=None, logs_collection=None, broa
 
                 driver.get("https://web.whatsapp.com")
                 print("Waiting for WhatsApp login...")
-                try:
-                    wait.until(EC.presence_of_element_located((By.ID, "pane-side")))
-                    print("WhatsApp Logged In Successfully")
-                except Exception:
+                
+                # QR Code relay for headless mode
+                login_check_iterations = 0
+                while login_check_iterations < 60:  # 5 minutes max (5s * 60)
+                    try:
+                        # Check if logged in
+                        if driver.find_elements(By.ID, "pane-side"):
+                            print("✅ WhatsApp Logged In Successfully")
+                            break
+                        
+                        # Look for QR code
+                        qr_elements = driver.find_elements(By.CSS_SELECTOR, "canvas")
+                        if qr_elements and broadcast_func:
+                            # Take screenshot of the QR code canvas
+                            qr_base64 = qr_elements[0].screenshot_as_base64
+                            broadcast_func({
+                                "type": "QR_CODE",
+                                "data": {"image": f"data:image/png;base64,{qr_base64}"}
+                            })
+                            print("📲 QR Code sent to frontend")
+                        
+                    except Exception as e:
+                        print(f"Error during login check: {e}")
+                    
+                    time.sleep(5)
+                    login_check_iterations += 1
+                
+                # Final check after loop
+                if not driver.find_elements(By.ID, "pane-side"):
                     print("❌ Login timeout or failed")
                     if driver: driver.quit()
                     results["status"] = "login_failed"

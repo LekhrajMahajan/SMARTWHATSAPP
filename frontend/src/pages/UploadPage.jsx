@@ -42,6 +42,7 @@ const UploadPage = () => {
   const [cooldown, setCooldown] = useState(0); // seconds remaining
   const [statusInfo, setStatusInfo] = useState({ sentToday: 0, dailyLimit: 800 });
   const [isWithinWindow, setIsWithinWindow] = useState(true);
+  const [qrCode, setQrCode] = useState(null); // Base64 QR image
 
   // ── Cooldown Timer logic ───────────────────────────────────────────────────
   useEffect(() => {
@@ -95,6 +96,8 @@ const UploadPage = () => {
             setIsWithinWindow(false);
           } else if (data.type === 'WINDOW_RESUMED') {
             setIsWithinWindow(true);
+          } else if (data.type === 'QR_CODE') {
+            setQrCode(data.data.image);
           }
         } catch { /* ignore parse errors */ }
       };
@@ -213,6 +216,7 @@ const UploadPage = () => {
 
     setLoading(true);
     setResult(null);
+    setQrCode(null);
     setRealtimeLogs([]);
     setViewMode('realtime');
 
@@ -548,6 +552,25 @@ const UploadPage = () => {
           </button>
         )}
       </div>
+      
+      {/* WhatsApp QR Display (MODAL-ISH) */}
+      {qrCode && loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#121b22] border border-[#25d366]/30 p-8 rounded-2xl max-w-md w-full text-center shadow-[0_0_50px_rgba(37,211,102,0.2)]">
+            <h3 className="text-2xl font-bold text-[#dce5d8] mb-4">Login Required</h3>
+            <p className="text-[#bbcbb9] mb-6 text-sm">
+              Please scan this QR code with your WhatsApp app to start sending.
+            </p>
+            <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-inner">
+              <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64" />
+            </div>
+            <div className="flex items-center justify-center gap-3 text-xs text-[#25d366] font-medium animate-pulse">
+              <span className="material-symbols-outlined text-sm">sync</span>
+              Waiting for scan...
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WhatsApp QR NOTE */}
       <div className="px-4 lg:px-0">
