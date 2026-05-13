@@ -149,8 +149,8 @@ const UploadPage = () => {
         const statusData = await getStatus();
         if (statusData) {
           setCooldown(statusData.remaining_cooldown);
-          setStatusInfo({ 
-            sentToday: statusData.sent_today, 
+          setStatusInfo({
+            sentToday: statusData.sent_today,
             dailyLimit: statusData.daily_limit,
             cooldownUntil: statusData.cooldown_until
           });
@@ -286,18 +286,18 @@ const UploadPage = () => {
   const displayLogs = viewMode === 'history' ? logs : realtimeLogs;
 
   return (
-    <section className="flex-grow pt-20 md:pt-24 px-4 md:px-margin lg:px-lg max-w-7xl mx-auto w-full relative z-10 pb-16 md:pb-24">
+    <section className="flex-grow pt-24 md:pt-32 px-4 md:px-margin lg:px-lg max-w-7xl mx-auto w-full relative z-10 pb-20 md:pb-32">
 
       {/* Background neon glows */}
       <div className="absolute neon-underglow-abs w-[300px] md:w-[800px] h-[300px] md:h-[800px] top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
       <div className="absolute neon-underglow-abs w-[200px] md:w-[600px] h-[200px] md:h-[600px] bottom-0 right-0 translate-x-1/4 translate-y-1/4 pointer-events-none opacity-50" />
 
       {/* PAGE HEADER */}
-      <header className="text-center mb-6 md:mb-8 px-4">
-        <h1 className="text-3xl md:text-5xl lg:text-[56px] font-[800] leading-[1.1] tracking-[-0.02em] text-[#dce5d8] mb-4">
+      <header className="text-center mb-10 md:mb-16 px-4">
+        <h1 className="text-4xl md:text-5xl lg:text-[72px] font-[900] leading-[1.1] tracking-[-0.03em] text-[#dce5d8] mb-6 drop-shadow-[0_0_20px_rgba(37,211,102,0.2)]">
           Send Your WhatsApp Campaign
         </h1>
-        <p className="text-base md:text-lg lg:text-xl font-[400] leading-[1.6] text-[#bbcbb9] max-w-2xl mx-auto">
+        <p className="text-lg md:text-xl lg:text-2xl font-[400] leading-[1.6] text-[#bbcbb9] max-w-3xl mx-auto">
           Upload your contact list and write your message below. We handle the automation while you focus on growth.
         </p>
       </header>
@@ -388,10 +388,10 @@ const UploadPage = () => {
                   <div className="text-right">
                     {statusInfo.cooldownUntil && (
                       <div className="mb-1">
-                         <p className="text-[9px] text-[#bbcbb9] uppercase">Last Cooldown Until</p>
-                         <p className="text-[10px] text-orange-400 font-bold">
-                           {new Date(statusInfo.cooldownUntil).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                         </p>
+                        <p className="text-[9px] text-[#bbcbb9] uppercase">Last Cooldown Until</p>
+                        <p className="text-[10px] text-orange-400 font-bold">
+                          {new Date(statusInfo.cooldownUntil).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     )}
                     <p className="text-[10px] text-[#bbcbb9] uppercase">Today's Progress</p>
@@ -406,14 +406,14 @@ const UploadPage = () => {
         </div>
       </div>
 
-      {/* TWO COLUMN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-10 px-4 lg:px-0">
+      {/* TWO COLUMN GRID - Laptop-like 2-column layout on Tablets and Up */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 mb-10 md:mb-16 px-4 lg:px-0">
 
         {/* STEP 1: Upload File */}
         <section className="bg-[#121b22]/70 backdrop-blur-xl border border-[#869584]/30 border-t-white/10 border-l-white/10 rounded-xl p-6 md:p-8 flex flex-col relative group transition-all duration-300">
-          <h2 className="text-xl md:text-[24px] font-[600] leading-[1.3] text-[#25d366] mb-6 flex items-center gap-2">
-            <span className="bg-[#242c24] text-[#dce5d8] px-2 py-1 rounded text-[10px] md:text-[12px] font-[500] tracking-wider uppercase">STEP 1</span>
-            Upload Contact File
+          <h2 className="text-2xl md:text-[28px] font-[700] leading-[1.3] text-[#25d366] mb-8 flex items-center gap-3">
+            <span className="bg-[#25d366]/20 text-[#25d366] px-3 py-1.5 rounded-lg text-[12px] font-[700] tracking-wider uppercase border border-[#25d366]/30">STEP 1</span>
+            Upload Contacts
           </h2>
 
           <div
@@ -462,9 +462,9 @@ const UploadPage = () => {
         {/* STEP 2: Write Message */}
         <section className="bg-[#121b22]/70 backdrop-blur-xl border border-[#869584]/30 border-t-white/10 border-l-white/10 rounded-xl p-6 md:p-8 flex flex-col transition-all duration-300">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl md:text-[24px] font-[600] leading-[1.3] text-[#25d366] flex items-center gap-2">
-              <span className="bg-[#242c24] text-[#dce5d8] px-2 py-1 rounded text-[10px] md:text-[12px] font-[500] tracking-wider uppercase">STEP 2</span>
-              Write Your Message
+            <h2 className="text-2xl md:text-[28px] font-[700] leading-[1.3] text-[#25d366] flex items-center gap-3">
+              <span className="bg-[#25d366]/20 text-[#25d366] px-3 py-1.5 rounded-lg text-[12px] font-[700] tracking-wider uppercase border border-[#25d366]/30">STEP 2</span>
+              Write Message
             </h2>
           </div>
 
@@ -552,7 +552,7 @@ const UploadPage = () => {
           </button>
         )}
       </div>
-      
+
       {/* WhatsApp QR Display (MODAL-ISH) */}
       {qrCode && loading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">

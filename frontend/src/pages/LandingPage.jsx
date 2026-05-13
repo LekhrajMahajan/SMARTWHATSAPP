@@ -10,7 +10,7 @@ const LandingPage = () => {
       <div className="fixed bottom-[-20%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[#59dcb5]/5 blur-[100px] pointer-events-none z-[-1]"></div>
 
       {/* Hero Section */}
-      <section className="relative min-h-[70vh] md:min-h-[90vh] flex items-center justify-center px-6 md:px-8 overflow-hidden bg-[#0a100b]" id="home">
+      <section className="relative min-h-[80vh] md:min-h-[90vh] flex items-center justify-center px-4 md:px-8 overflow-hidden bg-[#0a100b]" id="home">
         
         {/* THE GRID - Based on Image 2, but in Green */}
         <div className="absolute inset-0 grid-background opacity-100 z-0"></div>
@@ -23,10 +23,10 @@ const LandingPage = () => {
             <span className="w-2 h-2 rounded-full bg-[#25d366] animate-pulse"></span>
             <span className="text-[#25d366] text-xs font-bold uppercase tracking-widest">Built for Safety & Growth</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[64px] font-extrabold leading-[1.1] tracking-tight text-[#dce5d8] drop-shadow-[0_0_15px_rgba(37,211,102,0.3)]">
+          <h1 className="text-[42px] sm:text-5xl md:text-6xl lg:text-[80px] font-[900] leading-[1.05] tracking-tight text-[#dce5d8] drop-shadow-[0_0_20px_rgba(37,211,102,0.25)]">
             Automated WhatsApp Marketing — <span className="text-[#25d366]">Risk-Free</span>
           </h1>
-          <p className="text-base md:text-lg lg:text-xl font-normal leading-relaxed text-[#bbcbb9] max-w-2xl mx-auto px-4">
+          <p className="text-lg md:text-xl lg:text-2xl font-[400] leading-relaxed text-[#bbcbb9] max-w-3xl mx-auto px-4 opacity-90">
             The smartest way to reach your customers. SmartWA follows human-like patterns with automated batches, safety windows, and personalized messaging to keep your account safe.
           </p>
           <div className="mt-8 md:mt-12 w-full flex justify-center">

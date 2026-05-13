@@ -64,16 +64,16 @@ const LoginPage = () => {
 
       <div className="bg-[#121b22]/80 backdrop-blur-2xl w-full max-w-[480px] p-6 md:p-10 rounded-2xl md:rounded-3xl border border-[#3c4a3d]/30 shadow-2xl relative z-10 transition-all">
         
-        <div className="text-center mb-8 md:mb-10">
-          <div className="w-14 h-14 md:w-16 md:h-16 bg-[#25d366]/10 rounded-2xl flex items-center justify-center border border-[#25d366]/20 mx-auto mb-4 md:mb-6 rotate-3 hover:rotate-0 transition-transform duration-300">
-            <span className="material-symbols-outlined text-[#25d366] text-[28px] md:text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+        <div className="text-center mb-10 md:mb-12">
+          <div className="w-16 h-16 md:w-20 md:h-20 bg-[#25d366]/10 rounded-2xl flex items-center justify-center border border-[#25d366]/20 mx-auto mb-6 md:mb-8 rotate-3 hover:rotate-0 transition-transform duration-300">
+            <span className="material-symbols-outlined text-[#25d366] text-[32px] md:text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               {isLogin ? 'key' : 'person_add'}
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-[32px] font-extrabold text-[#dce5d8] tracking-tight mb-2">
+          <h1 className="text-3xl md:text-4xl lg:text-[40px] font-[900] text-[#dce5d8] tracking-tight mb-3">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h1>
-          <p className="text-[#bbcbb9] text-sm md:text-base font-normal opacity-70">
+          <p className="text-[#bbcbb9] text-base md:text-lg font-normal opacity-80 max-w-[280px] md:max-w-none mx-auto leading-relaxed">
             {isLogin ? 'Access your automated campaigns' : 'Join the elite network of senders'}
           </p>
         </div>
