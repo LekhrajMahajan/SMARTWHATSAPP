@@ -44,13 +44,25 @@ def wait_for_message_to_send(driver, wait, timeout=30):
     Waits until the message input box is empty — confirming the message was sent.
     This ensures we stay on the current contact's chat until the message is fully delivered.
     """
+    selectors = [
+        '//div[@contenteditable="true"][@data-tab="10"]',
+        '//div[@title="Type a message"]',
+        '//footer//div[@contenteditable="true"]',
+        '//div[@role="textbox"]'
+    ]
+    
     try:
-        # Wait for the message box to be empty (message sent)
-        wait.until(
-            lambda d: d.find_element(
-                By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]'
-            ).text == ""
-        )
+        def is_empty(d):
+            for xpath in selectors:
+                try:
+                    el = d.find_element(By.XPATH, xpath)
+                    if el.text == "":
+                        return True
+                except:
+                    continue
+            return False
+
+        wait.until(is_empty)
         return True
     except Exception:
         # Fallback: if we can't confirm, wait a fixed time
@@ -263,30 +275,56 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     # and check for common failure modals
                     message_box = None
                     start_time = time.time()
+                    
+                    # Robust selectors for WhatsApp message box
+                    box_selectors = [
+                        '//div[@contenteditable="true"][@data-tab="10"]',
+                        '//div[@title="Type a message"]',
+                        '//div[@role="textbox"]',
+                        '//footer//div[@contenteditable="true"]',
+                        '//div[@data-testid="conversation-text-input"]'
+                    ]
+
                     while time.time() - start_time < 60:
                         try:
-                            # Check if the message box is present
-                            # XPath targets the standard WhatsApp message input
-                            elements = driver.find_elements(By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')
-                            if elements and elements[0].is_displayed():
-                                message_box = elements[0]
+                            # 1. Try to find the message box using multiple selectors
+                            for xpath in box_selectors:
+                                elements = driver.find_elements(By.XPATH, xpath)
+                                if elements and elements[0].is_displayed():
+                                    message_box = elements[0]
+                                    break
+                            
+                            if message_box:
                                 break
                             
-                            # Check specifically for the "Phone number shared via url is invalid" modal text
-                            # WhatsApp uses specific text for this
+                            # 2. Check specifically for the "Phone number shared via url is invalid" modal
                             page_text = driver.page_source.lower()
-                            if "phone number shared via url is invalid" in page_text or \
-                               "url is invalid" in page_text:
-                                print(f"[{username}] ⚠️ Phone number {number} is officially invalid on WhatsApp.")
+                            invalid_triggers = [
+                                "phone number shared via url is invalid",
+                                "url is invalid",
+                                "is not on whatsapp",
+                                "invalid number",
+                                "couldn't find"
+                            ]
+                            
+                            if any(trigger in page_text for trigger in invalid_triggers):
+                                print(f"[{username}] ⚠️ Phone number {number} appears to be invalid on WhatsApp.")
                                 break
-                                
+                            
+                            # 3. Check for "Starting chat" overlay that might be stuck
+                            if "starting chat" in page_text:
+                                # If stuck for too long, maybe refresh? But for now just wait
+                                pass
+
                             time.sleep(2)
                         except Exception as e:
                             print(f"Polling error: {e}")
                             time.sleep(2)
 
                     if not message_box:
-                        raise Exception("Message box not found (Possible invalid number or extremely slow connection)")
+                        # Log more info about why it failed
+                        print(f"[{username}] 🔍 Debug Info: URL={driver.current_url}, Title={driver.title}")
+                        raise Exception("Message box not found (Possible invalid number, slow connection, or DOM change)")
 
                     time.sleep(2.5) # Extra safety for cloud environment
                     message_box.click()
