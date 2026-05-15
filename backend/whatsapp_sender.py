@@ -249,9 +249,28 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     return results
 
             # SEND BATCH
+            contact_index = 0
             for contact in batch:
+                contact_index += 1
                 contact_start_time = time.time()
                 results["total_attempted"] += 1
+                
+                name = contact["name"]
+                number = str(contact["number"]).strip()
+                print(f"[{username}] 🔄 Processing contact {i + contact_index} of {total_contacts}: {name} ({number})")
+                
+                if broadcast_func:
+                    broadcast_func({
+                        "type": "PROGRESS_UPDATE",
+                        "data": {
+                            "current": i + contact_index,
+                            "total": total_contacts,
+                            "name": name,
+                            "sent": results["sent_count"],
+                            "failed": results["failed_count"]
+                        }
+                    })
+
                 # Double check time window inside the batch
                 if not is_within_ist_window(10, 18):
                     print("⏳ Window closed during batch. Pausing.")
@@ -268,7 +287,15 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         
                     message = template.replace("{name}", name)
 
-                    print(f"[{username}] Sending to {name} ({number})")
+                    # Dismiss any unexpected alerts (like "Leave site?") before navigating
+                    try:
+                        alert = driver.switch_to.alert
+                        print(f"[{username}] ⚠️ Dismissing alert: {alert.text}")
+                        alert.dismiss()
+                    except:
+                        pass
+
+                    print(f"[{username}] 🚀 Navigating to chat for {name}...")
                     url = f"https://web.whatsapp.com/send?phone={number}"
                     driver.get(url)
 
