@@ -250,6 +250,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
 
             # SEND BATCH
             for contact in batch:
+                contact_start_time = time.time()
                 results["total_attempted"] += 1
                 # Double check time window inside the batch
                 if not is_within_ist_window(10, 18):
@@ -276,13 +277,15 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     message_box = None
                     start_time = time.time()
                     
-                    # Robust selectors for WhatsApp message box
+                    # Robust selectors for WhatsApp message box (Updated for 2025 Lexical Editor)
                     box_selectors = [
                         '//div[@contenteditable="true"][@data-tab="10"]',
                         '//div[@title="Type a message"]',
                         '//div[@role="textbox"]',
                         '//footer//div[@contenteditable="true"]',
-                        '//div[@data-testid="conversation-text-input"]'
+                        '//div[@data-testid="conversation-text-input"]',
+                        '//div[contains(@class, "lexical-rich-text-input")]//div[@contenteditable="true"]',
+                        '//p[contains(@class, "selectable-text") and contains(@class, "copyable-text")]'
                     ]
 
                     while time.time() - start_time < 60:
@@ -292,6 +295,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                                 elements = driver.find_elements(By.XPATH, xpath)
                                 if elements and elements[0].is_displayed():
                                     message_box = elements[0]
+                                    # Ensure it's the correct one by checking for any parent footer
                                     break
                             
                             if message_box:
@@ -327,6 +331,13 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         raise Exception("Message box not found (Possible invalid number, slow connection, or DOM change)")
 
                     time.sleep(2.5) # Extra safety for cloud environment
+                    
+                    # Ensure focus using JavaScript before typing
+                    try:
+                        driver.execute_script("arguments[0].focus();", message_box)
+                    except:
+                        pass
+                        
                     message_box.click()
                     time.sleep(0.5)
                     type_message_with_newlines(driver, message_box, message)
@@ -335,20 +346,28 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     
                     # Confirm send
                     wait_for_message_to_send(driver, send_wait)
-                    time.sleep(random.uniform(2, 4))
-
+                    
                     print(f"[{username}] ✅ Message sent to {name}")
                     results["sent_count"] += 1
                     if on_status:
                         on_status(contact, "Sent")
                     
-                    time.sleep(random.uniform(3, 6))
+                    # 15-SECOND DELAY ENFORCEMENT
+                    # Calculate how much time is left to reach 15 seconds for this contact
+                    elapsed = time.time() - contact_start_time
+                    if elapsed < 15:
+                        remaining = 15 - elapsed
+                        print(f"[{username}] ⏳ Waiting {remaining:.1f}s to maintain 15s interval...")
+                        time.sleep(remaining)
 
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")
                     results["failed_count"] += 1
                     if on_status:
                         on_status(contact, "Failed")
+                    
+                    # Even if it fails, wait a bit to avoid hammering
+                    time.sleep(5)
 
             # AFTER BATCH
             print(f"[{username}] ✅ Batch completed.")
