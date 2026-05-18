@@ -469,7 +469,8 @@ async def upload_file(
                         username=username,
                         on_status=on_status_update,
                         logs_collection=logs_collection,
-                        broadcast_func=broadcast_wrapper
+                        broadcast_func=broadcast_wrapper,
+                        users_collection=users_collection
                     )
                 )
             except Exception as e:

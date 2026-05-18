@@ -70,7 +70,7 @@ def wait_for_message_to_send(driver, wait, timeout=30):
         return False
 
 
-def send_messages(contacts, template, username="default", on_status=None, logs_collection=None, broadcast_func=None):
+def send_messages(contacts, template, username="default", on_status=None, logs_collection=None, broadcast_func=None, users_collection=None):
     """
     Sends messages with specific restrictions:
     - Only between 10 AM and 6 PM IST.
@@ -219,6 +219,33 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         # Check if logged in
                         if driver.find_elements(By.ID, "pane-side"):
                             print(f"[{username}] ✅ WhatsApp Logged In Successfully")
+                            
+                            # Retrieve the linked WhatsApp number
+                            try:
+                                last_wid = driver.execute_script("return window.localStorage.getItem('last-wid')")
+                                if last_wid:
+                                    wa_number = last_wid.strip('"').split('@')[0]
+                                    print(f"[{username}] 🔗 Linked WhatsApp Number: {wa_number}")
+                                    
+                                    if users_collection is not None:
+                                        # Check if this number is linked to a different user
+                                        existing_user = users_collection.find_one({"linked_wa_number": wa_number})
+                                        if existing_user and existing_user["username"] != username:
+                                            print(f"[{username}] ❌ This WhatsApp number is already linked to another account ({existing_user['username']})")
+                                            if broadcast_func:
+                                                broadcast_func({"type": "ERROR", "data": {"message": "This WhatsApp number is already linked to another account. Please use a different number."}})
+                                            results["status"] = "number_already_linked"
+                                            if driver: driver.quit()
+                                            return results
+                                        else:
+                                            # Save the number to the current user
+                                            users_collection.update_one(
+                                                {"username": username},
+                                                {"$set": {"linked_wa_number": wa_number}}
+                                            )
+                            except Exception as e:
+                                print(f"[{username}] ⚠️ Could not fetch linked WhatsApp number: {e}")
+                                
                             break
                         
                         # Look for QR code
@@ -376,10 +403,10 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     if on_status:
                         on_status(contact, "Sent")
                     
-                    # 15-SECOND DELAY ENFORCEMENT
-                    # The user explicitly wants a 15-second gap between each person.
-                    print(f"[{username}] ⏳ Waiting 15s before the next message to maintain interval...")
-                    time.sleep(15)
+                    # 3-SECOND DELAY ENFORCEMENT
+                    # The user explicitly wants a 3-second gap between each person.
+                    print(f"[{username}] ⏳ Waiting 3s before the next message to maintain interval...")
+                    time.sleep(3)
 
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")

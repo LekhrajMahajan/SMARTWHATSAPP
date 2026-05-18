@@ -15,6 +15,7 @@ class User(BaseModel):
     username: str
     email: str
     hashed_password: str
+    linked_wa_number: Optional[str] = None
 
 class Contact(BaseModel):
     username: str
