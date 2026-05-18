@@ -354,7 +354,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         '//div[@data-testid="conversation-text-input"]'
                     ]
 
-                    while time.time() - start_time < 30:
+                    while time.time() - start_time < 60: # Increased to 60s for slow cloud environments
                         try:
                             # 1. Try to find the message box
                             for xpath in box_selectors:
@@ -380,6 +380,14 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
 
                             time.sleep(1.5)
                         except Exception as e:
+                            # If an unexpected alert (e.g. "Leave site?") pops up during chat loading, handle it dynamically
+                            if "alert" in str(e).lower() or "unexpected alert" in str(e).lower():
+                                try:
+                                    alert = driver.switch_to.alert
+                                    print(f"[{username}] ⚠️ Handling unexpected alert during chat load: {alert.text}")
+                                    alert.accept() # Accept to proceed leaving or dismissing
+                                except:
+                                    pass
                             time.sleep(1.5)
 
                     if not message_box:
