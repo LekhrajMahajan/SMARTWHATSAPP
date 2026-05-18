@@ -203,6 +203,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         if driver.find_elements(By.ID, "pane-side"):
                             print(f"[{username}] ✅ WhatsApp Logged In Successfully")
                             
+                            # Wait for 15 seconds to allow WhatsApp to sync messages properly
+                            # This prevents the first message from failing due to incomplete loading
+                            print(f"[{username}] ⏳ Waiting 15s for WhatsApp to sync data...")
+                            time.sleep(15)
+                            
                             # Retrieve the linked WhatsApp number
                             try:
                                 last_wid = driver.execute_script("return window.localStorage.getItem('last-wid')")
@@ -391,10 +396,12 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     if on_status:
                         on_status(contact, "Sent")
                     
-                    # 3-SECOND DELAY ENFORCEMENT
-                    # The user explicitly wants a 3-second gap between each person.
-                    print(f"[{username}] ⏳ Waiting 3s before the next message to maintain interval...")
-                    time.sleep(3)
+                    # ANTI-BAN DELAY ENFORCEMENT
+                    # The user explicitly wants a gap to prevent bans. 
+                    # A random gap between 15 and 65 seconds is the safest way to avoid detection.
+                    delay = random.randint(15, 65)
+                    print(f"[{username}] ⏳ Anti-Ban Delay: Waiting {delay}s before the next message...")
+                    time.sleep(delay)
 
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")
