@@ -30,10 +30,13 @@ def type_message_with_newlines(driver, message_box, message):
     
     # Trigger link recognition by sending a space and backspace
     # This 'wakes up' the WhatsApp input handler to linkify URLs
-    time.sleep(0.5)
-    message_box.send_keys(Keys.SPACE)
-    time.sleep(0.2)
-    message_box.send_keys(Keys.BACKSPACE)
+    try:
+        time.sleep(0.5)
+        message_box.send_keys(Keys.SPACE)
+        time.sleep(0.2)
+        message_box.send_keys(Keys.BACKSPACE)
+    except Exception as link_err:
+        print(f"⚠️ Warning: Failed to trigger link recognition (ignored): {link_err}")
     
     # Wait for link preview/processing
     time.sleep(1.0)
@@ -324,12 +327,21 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     try:
                         driver.get(url)
                     except Exception as e:
-                        if "alert" in str(e).lower():
+                        print(f"[{username}] ⚠️ Navigation exception for {name}: {e}")
+                        try:
+                            # Try to dismiss any unexpected alert (like "Leave site?")
+                            alert = driver.switch_to.alert
+                            print(f"[{username}] ⚠️ Dismissing unexpected alert: {alert.text}")
+                            alert.accept() # Accept to proceed leaving the site
+                            # Retry navigation
+                            driver.get(url)
+                        except Exception as alert_err:
+                            print(f"[{username}] ⚠️ Error handling alert during navigation retry: {alert_err}")
+                            # Try one final time to navigate directly
                             try:
-                                driver.switch_to.alert.accept()
                                 driver.get(url)
-                            except:
-                                pass
+                            except Exception as retry_err:
+                                raise Exception(f"Failed to navigate to WhatsApp chat: {retry_err}")
 
                     # Wait for the message box with a shorter timeout (30s)
                     message_box = None
@@ -386,7 +398,20 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     time.sleep(0.5)
                     type_message_with_newlines(driver, message_box, message)
                     time.sleep(1.0)
-                    message_box.send_keys(Keys.ENTER)
+                    # Use ActionChains to send the ENTER key. This is a best practice for Lexical/React editors
+                    # because it does not hold a reference to the DOM element, avoiding StaleElementReferenceExceptions
+                    # when the message box re-renders instantly upon sending.
+                    try:
+                        webdriver.ActionChains(driver).send_keys(Keys.ENTER).perform()
+                    except Exception as enter_err:
+                        print(f"[{username}] ⚠️ ActionChains ENTER failed, falling back to direct send_keys: {enter_err}")
+                        try:
+                            message_box.send_keys(Keys.ENTER)
+                        except Exception as fallback_err:
+                            if "stale" in str(fallback_err).lower():
+                                print(f"[{username}] ⚠️ Ignored stale element exception during fallback ENTER.")
+                            else:
+                                raise fallback_err
                     
                     # Confirm send
                     wait_for_message_to_send(driver, send_wait)
