@@ -322,16 +322,59 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     except:
                         pass
 
-                    print(f"[{username}] 🚀 Navigating to chat for {name}...")
-                    url = f"https://web.whatsapp.com/send?phone={number}"
-                    driver.get(url)
+                    print(f"[{username}] 🚀 Searching for {name} ({number}) without reloading...")
+                    
+                    # 1. Click "New chat" button to open search drawer reliably
+                    try:
+                        new_chat_btn = driver.find_elements(By.XPATH, '//div[@title="New chat"] | //span[@data-icon="chat"]')
+                        if new_chat_btn and new_chat_btn[0].is_displayed():
+                            new_chat_btn[0].click()
+                            time.sleep(1.0)
+                    except Exception as e:
+                        print(f"[{username}] ⚠️ Could not click 'New chat' button: {e}")
 
-                    # Wait for the message box with a more reasonable timeout (60s)
-                    # and check for common failure modals
+                    # 2. Find search box in drawer or main pane
+                    search_input = None
+                    search_xpaths = [
+                        '//div[@contenteditable="true"][@data-tab="3"]',
+                        '//div[@title="Search input textbox"]',
+                        '//div[@title="Search name or number"]',
+                        '//div[@data-testid="chat-list-search"]'
+                    ]
+                    
+                    # Wait up to 5 seconds for search box
+                    search_start = time.time()
+                    while time.time() - search_start < 5:
+                        for xpath in search_xpaths:
+                            elements = driver.find_elements(By.XPATH, xpath)
+                            if elements and elements[0].is_displayed():
+                                search_input = elements[0]
+                                break
+                        if search_input:
+                            break
+                        time.sleep(1)
+                        
+                    if not search_input:
+                        raise Exception("Could not find WhatsApp search box.")
+
+                    # 3. Type number and search
+                    # Clear search box using JS
+                    driver.execute_script("arguments[0].innerHTML = '';", search_input)
+                    search_input.send_keys(Keys.CONTROL + "a")
+                    search_input.send_keys(Keys.BACKSPACE)
+                    time.sleep(0.5)
+                    
+                    search_input.send_keys(number)
+                    print(f"[{username}] 🔍 Waiting for WhatsApp to find the number...")
+                    time.sleep(2.5) # Crucial: Wait for WhatsApp to query the unsaved number
+                    
+                    # 4. Press Enter to open the chat with the first result
+                    search_input.send_keys(Keys.ENTER)
+                    
+                    # Wait for the message box with a much shorter timeout (10s)
                     message_box = None
                     start_time = time.time()
                     
-                    # Robust selectors for WhatsApp message box (Updated for Lexical Editor)
                     box_selectors = [
                         '//footer//div[@contenteditable="true"]',
                         '//div[@id="main"]//footer//div[@contenteditable="true"]',
@@ -339,47 +382,38 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         '//div[@data-testid="conversation-text-input"]'
                     ]
 
-                    while time.time() - start_time < 60:
+                    while time.time() - start_time < 10:
                         try:
-                            # 1. Try to find the message box using multiple selectors
                             for xpath in box_selectors:
                                 elements = driver.find_elements(By.XPATH, xpath)
                                 if elements and elements[0].is_displayed():
                                     message_box = elements[0]
-                                    # Ensure it's the correct one by checking for any parent footer
                                     break
-                            
                             if message_box:
                                 break
                             
-                            # 2. Check specifically for the "Phone number shared via url is invalid" modal
+                            # Check if it says "No contacts found"
                             page_text = driver.page_source.lower()
-                            invalid_triggers = [
-                                "phone number shared via url is invalid",
-                                "url is invalid",
-                                "is not on whatsapp",
-                                "invalid number",
-                                "couldn't find"
-                            ]
-                            
-                            if any(trigger in page_text for trigger in invalid_triggers):
-                                print(f"[{username}] ⚠️ Phone number {number} appears to be invalid on WhatsApp.")
+                            if "no results found" in page_text or "no contacts found" in page_text:
+                                print(f"[{username}] ⚠️ Number {number} is not on WhatsApp or not found.")
                                 break
                             
-                            # 3. Check for "Starting chat" overlay that might be stuck
-                            if "starting chat" in page_text:
-                                # If stuck for too long, maybe refresh? But for now just wait
-                                pass
-
-                            time.sleep(2)
+                            time.sleep(1)
                         except Exception as e:
-                            print(f"Polling error: {e}")
-                            time.sleep(2)
+                            time.sleep(1)
 
                     if not message_box:
-                        # Log more info about why it failed
-                        print(f"[{username}] 🔍 Debug Info: URL={driver.current_url}, Title={driver.title}")
-                        raise Exception("Message box not found (Possible invalid number, slow connection, or DOM change)")
+                        print(f"[{username}] ❌ Number not found or message box didn't load.")
+                        
+                        # Close the search drawer by pressing Escape twice if we are stuck in the drawer
+                        try:
+                            webdriver.ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+                            time.sleep(0.5)
+                            webdriver.ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+                        except:
+                            pass
+                        
+                        raise Exception("Message box not found (Likely invalid number or not on WhatsApp)")
 
                     time.sleep(2.5) # Extra safety for cloud environment
                     
