@@ -291,11 +291,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     name = contact["name"]
                     number = str(contact["number"]).strip()
                     
-                    # Ensure number is in international format with '+' for search recognition
+                    # Ensure number is in international format (just digits for URL navigation)
                     if len(number) == 10 and number.isdigit():
-                        number = "+91" + number
-                    elif number.isdigit() and len(number) > 10 and not number.startswith("+"):
-                        number = "+" + number
+                        number = "91" + number
+                    elif number.startswith("+"):
+                        number = number[1:]
                         
                     message = template.replace("{name}", name)
 
@@ -309,7 +309,22 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
 
                     print(f"[{username}] 🚀 Navigating to chat for {name} ({number})...")
                     url = f"https://web.whatsapp.com/send?phone={number}"
-                    driver.get(url)
+                    
+                    # Disable onbeforeunload to prevent "Leave site?" alerts from blocking driver.get
+                    try:
+                        driver.execute_script("window.onbeforeunload = null;")
+                    except:
+                        pass
+                        
+                    try:
+                        driver.get(url)
+                    except Exception as e:
+                        if "alert" in str(e).lower():
+                            try:
+                                driver.switch_to.alert.accept()
+                                driver.get(url)
+                            except:
+                                pass
 
                     # Wait for the message box with a shorter timeout (30s)
                     message_box = None
