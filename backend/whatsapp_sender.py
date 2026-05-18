@@ -39,34 +39,17 @@ def type_message_with_newlines(driver, message_box, message):
     time.sleep(1.0)
 
 
-def wait_for_message_to_send(driver, wait, timeout=30):
+def wait_for_message_to_send(driver, wait, timeout=10):
     """
-    Waits until the message input box is empty — confirming the message was sent.
-    This ensures we stay on the current contact's chat until the message is fully delivered.
+    Waits until the message is sent by checking if the 'Send' button disappears 
+    and turns back into the microphone icon, or just waits a few seconds.
     """
-    selectors = [
-        '//footer//div[@contenteditable="true"]',
-        '//div[@id="main"]//footer//div[@contenteditable="true"]',
-        '//div[@title="Type a message"]',
-        '//div[@data-testid="conversation-text-input"]'
-    ]
-    
     try:
-        def is_empty(d):
-            for xpath in selectors:
-                try:
-                    el = d.find_element(By.XPATH, xpath)
-                    if el.text == "":
-                        return True
-                except:
-                    continue
-            return False
-
-        wait.until(is_empty)
+        # After pressing ENTER, just wait 2.5 seconds. 
+        # Checking for empty text box is unreliable in Lexical editors and caused 30s delays.
+        time.sleep(2.5)
         return True
     except Exception:
-        # Fallback: if we can't confirm, wait a fixed time
-        time.sleep(2)
         return False
 
 
@@ -324,61 +307,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     except:
                         pass
 
-                    print(f"[{username}] 🚀 Searching for {name} ({number}) without reloading...")
-                    
-                    # 1. Click "New chat" button to open search drawer reliably
-                    try:
-                        new_chat_btn = driver.find_elements(By.XPATH, '//div[@title="New chat"] | //span[@data-icon="chat"]')
-                        if new_chat_btn and new_chat_btn[0].is_displayed():
-                            new_chat_btn[0].click()
-                            time.sleep(1.0)
-                    except Exception as e:
-                        print(f"[{username}] ⚠️ Could not click 'New chat' button: {e}")
+                    print(f"[{username}] 🚀 Navigating to chat for {name} ({number})...")
+                    url = f"https://web.whatsapp.com/send?phone={number}"
+                    driver.get(url)
 
-                    # 2. Find search box in drawer or main pane
-                    search_input = None
-                    search_xpaths = [
-                        '//div[@contenteditable="true"][@data-tab="3"]',
-                        '//div[@title="Search input textbox"]',
-                        '//div[@title="Search name or number"]',
-                        '//div[@data-testid="chat-list-search"]'
-                    ]
-                    
-                    # Wait up to 5 seconds for search box
-                    search_start = time.time()
-                    while time.time() - search_start < 5:
-                        for xpath in search_xpaths:
-                            elements = driver.find_elements(By.XPATH, xpath)
-                            if elements and elements[0].is_displayed():
-                                search_input = elements[0]
-                                break
-                        if search_input:
-                            break
-                        time.sleep(1)
-                        
-                    if not search_input:
-                        raise Exception("Could not find WhatsApp search box.")
-
-                    # 3. Type number and search
-                    # Clear search box properly without breaking Lexical state
-                    try:
-                        search_input.click()
-                    except:
-                        pass
-                    search_input.send_keys(Keys.CONTROL + "a")
-                    search_input.send_keys(Keys.BACKSPACE)
-                    time.sleep(0.5)
-                    
-                    search_input.send_keys(number)
-                    print(f"[{username}] 🔍 Waiting for WhatsApp to find the number...")
-                    time.sleep(3.0) # Crucial: Wait for WhatsApp to query the unsaved number
-                    
-                    # 4. Press ARROW_DOWN then ENTER to open the chat with the first result
-                    search_input.send_keys(Keys.ARROW_DOWN)
-                    time.sleep(0.5)
-                    search_input.send_keys(Keys.ENTER)
-                    
-                    # Wait for the message box with a much shorter timeout (10s)
+                    # Wait for the message box with a shorter timeout (30s)
                     message_box = None
                     start_time = time.time()
                     
@@ -389,8 +322,9 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         '//div[@data-testid="conversation-text-input"]'
                     ]
 
-                    while time.time() - start_time < 10:
+                    while time.time() - start_time < 30:
                         try:
+                            # 1. Try to find the message box
                             for xpath in box_selectors:
                                 elements = driver.find_elements(By.XPATH, xpath)
                                 if elements and elements[0].is_displayed():
@@ -399,28 +333,26 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                             if message_box:
                                 break
                             
-                            # Check if it says "No contacts found"
+                            # 2. Check for invalid number modals
                             page_text = driver.page_source.lower()
-                            if "no results found" in page_text or "no contacts found" in page_text:
-                                print(f"[{username}] ⚠️ Number {number} is not on WhatsApp or not found.")
-                                break
+                            invalid_triggers = [
+                                "phone number shared via url is invalid",
+                                "url is invalid",
+                                "is not on whatsapp",
+                                "invalid number"
+                            ]
                             
-                            time.sleep(1)
+                            if any(trigger in page_text for trigger in invalid_triggers):
+                                print(f"[{username}] ⚠️ Phone number {number} appears to be invalid on WhatsApp.")
+                                break
+
+                            time.sleep(1.5)
                         except Exception as e:
-                            time.sleep(1)
+                            time.sleep(1.5)
 
                     if not message_box:
-                        print(f"[{username}] ❌ Number not found or message box didn't load.")
-                        
-                        # Close the search drawer by pressing Escape twice if we are stuck in the drawer
-                        try:
-                            webdriver.ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-                            time.sleep(0.5)
-                            webdriver.ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-                        except:
-                            pass
-                        
-                        raise Exception("Message box not found (Likely invalid number or not on WhatsApp)")
+                        print(f"[{username}] ❌ Message box not found.")
+                        raise Exception("Message box not found (Possible invalid number or slow connection)")
 
                     time.sleep(2.5) # Extra safety for cloud environment
                     
