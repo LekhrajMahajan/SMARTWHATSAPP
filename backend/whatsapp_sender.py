@@ -45,10 +45,10 @@ def wait_for_message_to_send(driver, wait, timeout=30):
     This ensures we stay on the current contact's chat until the message is fully delivered.
     """
     selectors = [
-        '//div[@contenteditable="true"][@data-tab="10"]',
-        '//div[@title="Type a message"]',
         '//footer//div[@contenteditable="true"]',
-        '//div[@role="textbox"]'
+        '//div[@id="main"]//footer//div[@contenteditable="true"]',
+        '//div[@title="Type a message"]',
+        '//div[@data-testid="conversation-text-input"]'
     ]
     
     try:
@@ -304,15 +304,12 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     message_box = None
                     start_time = time.time()
                     
-                    # Robust selectors for WhatsApp message box (Updated for 2025 Lexical Editor)
+                    # Robust selectors for WhatsApp message box (Updated for Lexical Editor)
                     box_selectors = [
-                        '//div[@contenteditable="true"][@data-tab="10"]',
-                        '//div[@title="Type a message"]',
-                        '//div[@role="textbox"]',
                         '//footer//div[@contenteditable="true"]',
-                        '//div[@data-testid="conversation-text-input"]',
-                        '//div[contains(@class, "lexical-rich-text-input")]//div[@contenteditable="true"]',
-                        '//p[contains(@class, "selectable-text") and contains(@class, "copyable-text")]'
+                        '//div[@id="main"]//footer//div[@contenteditable="true"]',
+                        '//div[@title="Type a message"]',
+                        '//div[@data-testid="conversation-text-input"]'
                     ]
 
                     while time.time() - start_time < 60:
@@ -380,12 +377,9 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         on_status(contact, "Sent")
                     
                     # 15-SECOND DELAY ENFORCEMENT
-                    # Calculate how much time is left to reach 15 seconds for this contact
-                    elapsed = time.time() - contact_start_time
-                    if elapsed < 15:
-                        remaining = 15 - elapsed
-                        print(f"[{username}] ⏳ Waiting {remaining:.1f}s to maintain 15s interval...")
-                        time.sleep(remaining)
+                    # The user explicitly wants a 15-second gap between each person.
+                    print(f"[{username}] ⏳ Waiting 15s before the next message to maintain interval...")
+                    time.sleep(15)
 
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")
