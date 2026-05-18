@@ -308,9 +308,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     name = contact["name"]
                     number = str(contact["number"]).strip()
                     
-                    # Ensure number is in international format (default to 91 for 10 digits)
+                    # Ensure number is in international format with '+' for search recognition
                     if len(number) == 10 and number.isdigit():
-                        number = "91" + number
+                        number = "+91" + number
+                    elif number.isdigit() and len(number) > 10 and not number.startswith("+"):
+                        number = "+" + number
                         
                     message = template.replace("{name}", name)
 
@@ -358,17 +360,22 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         raise Exception("Could not find WhatsApp search box.")
 
                     # 3. Type number and search
-                    # Clear search box using JS
-                    driver.execute_script("arguments[0].innerHTML = '';", search_input)
+                    # Clear search box properly without breaking Lexical state
+                    try:
+                        search_input.click()
+                    except:
+                        pass
                     search_input.send_keys(Keys.CONTROL + "a")
                     search_input.send_keys(Keys.BACKSPACE)
                     time.sleep(0.5)
                     
                     search_input.send_keys(number)
                     print(f"[{username}] 🔍 Waiting for WhatsApp to find the number...")
-                    time.sleep(2.5) # Crucial: Wait for WhatsApp to query the unsaved number
+                    time.sleep(3.0) # Crucial: Wait for WhatsApp to query the unsaved number
                     
-                    # 4. Press Enter to open the chat with the first result
+                    # 4. Press ARROW_DOWN then ENTER to open the chat with the first result
+                    search_input.send_keys(Keys.ARROW_DOWN)
+                    time.sleep(0.5)
                     search_input.send_keys(Keys.ENTER)
                     
                     # Wait for the message box with a much shorter timeout (10s)
