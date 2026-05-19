@@ -373,27 +373,26 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     except:
                         pass
 
+                    # Navigate to the chat
                     print(f"[{username}] 🚀 Navigating to chat for {name} ({number})...")
                     url = f"https://web.whatsapp.com/send?phone={number}"
                     
-                    # Soft navigation using DOM injection to prevent full page reload (much faster and avoids timeouts)
                     try:
-                        script = f"""
-                            var a = document.createElement('a');
-                            a.href = '{url}';
-                            a.style.display = 'none';
-                            document.body.appendChild(a);
-                            a.click();
-                        """
-                        driver.execute_script(script)
-                    except Exception as e:
-                        print(f"[{username}] ⚠️ Soft navigation failed, falling back to driver.get(): {e}")
                         # Disable onbeforeunload to prevent "Leave site?" alerts from blocking driver.get
+                        driver.execute_script("window.onbeforeunload = null;")
+                    except:
+                        pass
+                        
+                    try:
+                        driver.get(url)
+                    except Exception as e:
+                        print(f"[{username}] ⚠️ Navigation failed, retrying: {e}")
                         try:
-                            driver.execute_script("window.onbeforeunload = null;")
+                            alert = driver.switch_to.alert
+                            alert.accept()
+                            driver.get(url)
                         except:
                             pass
-                        driver.get(url)
 
                     # Wait for the message box
                     message_box = None
