@@ -170,6 +170,10 @@ def send_verification_email(email: str, token: str):
     password = os.getenv("SMTP_PASSWORD")
     backend_url = os.getenv("BACKEND_URL", "http://localhost:7860")
     
+    if not username or not password:
+        print("CRITICAL ERROR: SMTP_USERNAME or SMTP_PASSWORD environment variables are missing! Did you forget to add them to HuggingFace Secrets?")
+        return
+        
     verify_url = f"{backend_url}/verify-email/{token}"
     msg = MIMEMultipart()
     msg['From'] = username
@@ -191,7 +195,8 @@ def send_verification_email(email: str, token: str):
     msg.attach(MIMEText(html, 'html'))
     
     try:
-        server = smtplib.SMTP(server_addr, port)
+        # Add timeout to prevent hanging if HuggingFace blocks the outbound port
+        server = smtplib.SMTP(server_addr, port, timeout=10)
         server.starttls()
         server.login(username, password)
         server.send_message(msg)
@@ -203,6 +208,7 @@ def send_verification_email(email: str, token: str):
 # AUTH ROUTES
 @app.post("/register")
 async def register(
+    background_tasks: BackgroundTasks,
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...)
@@ -222,11 +228,8 @@ async def register(
     )
     users_collection.insert_one(new_user.model_dump())
     
-    # Send email synchronously so we can guarantee execution and see any errors immediately
-    try:
-        send_verification_email(email, token)
-    except Exception as e:
-        print(f"CRITICAL ERROR in send_verification_email: {e}")
+    # Use background tasks so the frontend UI doesn't hang
+    background_tasks.add_task(send_verification_email, email, token)
         
     return {"message": "Registration successful. Please check your email to verify your account."}
 
