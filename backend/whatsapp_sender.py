@@ -8,7 +8,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 import time
-import random
 import os
 from datetime import datetime, timedelta
 from models import get_ist_time, is_within_ist_window
@@ -222,11 +221,6 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         if driver.find_elements(By.ID, "pane-side"):
                             print(f"[{username}] ✅ WhatsApp Logged In Successfully")
                             
-                            # Wait for 15 seconds to allow WhatsApp to sync messages properly
-                            # This prevents the first message from failing due to incomplete loading
-                            print(f"[{username}] ⏳ Waiting 15s for WhatsApp to sync data...")
-                            time.sleep(15)
-                            
                             # Retrieve the linked WhatsApp number
                             try:
                                 last_wid = driver.execute_script("return window.localStorage.getItem('last-wid')")
@@ -296,6 +290,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     return results
 
             # SEND BATCH
+            is_first_message = True  # First message sends immediately, rest wait 15s
             contact_index = 0
             for contact in batch:
                 contact_index += 1
@@ -458,12 +453,15 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     if on_status:
                         on_status(contact, "Sent")
                     
-                    # ANTI-BAN DELAY ENFORCEMENT
-                    # The user explicitly wants a gap to prevent bans. 
-                    # A random gap between 15 and 65 seconds is the safest way to avoid detection.
-                    delay = random.randint(15, 65)
-                    print(f"[{username}] ⏳ Anti-Ban Delay: Waiting {delay}s before the next message...")
-                    time.sleep(delay)
+                    # INTER-MESSAGE DELAY
+                    # First message fires instantly after QR login.
+                    # Every subsequent message waits exactly 15 seconds (IST-safe gap).
+                    if is_first_message:
+                        is_first_message = False
+                        print(f"[{username}] ⚡ First message sent immediately — no delay.")
+                    else:
+                        print(f"[{username}] ⏳ Waiting 15s before next message...")
+                        time.sleep(15)
 
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")
