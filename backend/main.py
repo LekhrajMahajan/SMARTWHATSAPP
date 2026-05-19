@@ -199,9 +199,9 @@ def send_verification_email(email: str, token: str, base_url: str = None):
     msg.attach(MIMEText(html, 'html'))
     
     try:
-        # Add timeout to prevent hanging if HuggingFace blocks the outbound port
-        server = smtplib.SMTP(server_addr, port, timeout=10)
-        server.starttls()
+        # HuggingFace blocks port 587 (Network is unreachable). 
+        # Attempting to use Port 465 (SMTP_SSL) which is sometimes allowed.
+        server = smtplib.SMTP_SSL(server_addr, 465, timeout=10)
         server.login(username, password)
         server.send_message(msg)
         server.quit()
