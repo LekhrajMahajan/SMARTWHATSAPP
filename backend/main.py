@@ -414,6 +414,32 @@ def get_messages(current_user: dict = Depends(get_current_user)):
 async def get_status(current_user: dict = Depends(get_current_user)):
     from models import is_within_ist_window, get_ist_time
     
+    # Check subscription status
+    is_subscribed = current_user.get("is_subscribed", False)
+    subscription_plan = current_user.get("subscription_plan", None)
+    subscription_expiry = current_user.get("subscription_expiry", None)
+    
+    # Auto check expiration
+    if is_subscribed and subscription_expiry:
+        expiry_dt = None
+        if isinstance(subscription_expiry, str):
+            try:
+                expiry_dt = datetime.fromisoformat(subscription_expiry)
+            except:
+                pass
+        elif isinstance(subscription_expiry, datetime):
+            expiry_dt = subscription_expiry
+            
+        if expiry_dt:
+            if expiry_dt.tzinfo is None:
+                expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expiry_dt:
+                is_subscribed = False
+                users_collection.update_one(
+                    {"username": current_user["username"]},
+                    {"$set": {"is_subscribed": False}}
+                )
+                
     # Calculate remaining cooldown seconds using robust UTC comparison
     now = datetime.now(timezone.utc)
     remaining_cooldown = 0
@@ -461,7 +487,46 @@ async def get_status(current_user: dict = Depends(get_current_user)):
         "daily_limit": 800,
         "window_start": 10,
         "window_end": 18,
-        "is_within_window": is_within_ist_window(10, 18)
+        "is_within_window": is_within_ist_window(10, 18),
+        "is_subscribed": is_subscribed,
+        "subscription_plan": subscription_plan,
+        "subscription_expiry": str(subscription_expiry) if subscription_expiry else None
+    }
+
+# SUBSCRIBE API (PLAN ACTIVATION)
+@app.post("/subscribe")
+async def subscribe(request: Request, current_user: dict = Depends(get_current_user)):
+    data = await request.json()
+    plan = data.get("plan")
+    
+    if plan not in ["1_month", "3_months", "6_months"]:
+        raise HTTPException(status_code=400, detail="Invalid subscription plan")
+        
+    days = 30
+    if plan == "3_months":
+        days = 90
+    elif plan == "6_months":
+        days = 180
+        
+    expiry = datetime.now(timezone.utc) + timedelta(days=days)
+    
+    users_collection.update_one(
+        {"username": current_user["username"]},
+        {
+            "$set": {
+                "is_subscribed": True,
+                "subscription_plan": plan,
+                "subscription_expiry": expiry
+            }
+        }
+    )
+    
+    return {
+        "success": True,
+        "message": f"Plan activated successfully!",
+        "is_subscribed": True,
+        "subscription_plan": plan,
+        "subscription_expiry": str(expiry)
     }
 
 
@@ -477,6 +542,13 @@ async def upload_file(
     message: str = Form(...),
     current_user: dict = Depends(get_current_user)
 ):
+
+    # ENFORCE SUBSCRIPTION GATE
+    if not current_user.get("is_subscribed", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Active subscription required. Please choose a plan first."
+        )
 
     # PREVENT CONCURRENT CAMPAIGNS FOR SAME USER
     username = current_user["username"]
