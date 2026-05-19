@@ -246,7 +246,15 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                                             )
                             except Exception as e:
                                 print(f"[{username}] ⚠️ Could not fetch linked WhatsApp number: {e}")
-                                
+
+                            # Notify frontend: QR scanned, login confirmed — close modal & show live view
+                            if broadcast_func:
+                                broadcast_func({"type": "LOGIN_SUCCESS", "data": {}})
+                                print(f"[{username}] 📡 Sent LOGIN_SUCCESS to frontend")
+
+                            # Short stabilization wait (3s) so WhatsApp fully loads before navigating
+                            print(f"[{username}] ⏳ Waiting 3s for WhatsApp to stabilize...")
+                            time.sleep(3)
                             break
                         
                         # Look for QR code canvas using multiple selectors
@@ -372,10 +380,17 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     start_time = time.time()
                     
                     box_selectors = [
+                        # Modern WhatsApp Web (2024+) — most reliable
+                        '//div[@aria-label="Type a message"]',
+                        '//div[@aria-placeholder="Type a message"]',
+                        # Fallback: footer contenteditable
                         '//footer//div[@contenteditable="true"]',
                         '//div[@id="main"]//footer//div[@contenteditable="true"]',
+                        # Legacy selectors
                         '//div[@title="Type a message"]',
-                        '//div[@data-testid="conversation-text-input"]'
+                        '//div[@data-testid="conversation-text-input"]',
+                        # Broad fallback — any visible contenteditable in the chat area
+                        '//div[@id="main"]//div[@contenteditable="true"]',
                     ]
 
                     while time.time() - start_time < 60: # Increased to 60s for slow cloud environments
