@@ -17,6 +17,6 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git remote add hf https://lekhraj004:$HF_TOKEN@huggingface.co/spaces/lekhraj004/SmartWhatsApp
+          git remote add hf https://lekhraj004:$HF_TOKEN@huggingface.co/spaces/lekhraj004/smartwhatsapp
           git push --force hf main
 
