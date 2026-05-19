@@ -11,6 +11,7 @@ import secrets
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import requests
 
 from excel_reader import read_contacts
 from whatsapp_sender import send_messages
@@ -164,50 +165,52 @@ def send_verification_email(email: str, token: str, base_url: str = None):
     from dotenv import load_dotenv
     load_dotenv()
     
-    server_addr = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    port = int(os.getenv("SMTP_PORT", 587))
-    # TEMPORARY FALLBACK: Using the credentials directly since HuggingFace secrets are missing.
-    # WARNING: Please remove this password from your code if your GitHub repository is public!
-    username = os.getenv("SMTP_USERNAME", "lekhrajmahajan84@gmail.com")
-    password = os.getenv("SMTP_PASSWORD", "psla ynsb pirb diiq")
-    
     # Use dynamically generated request URL if BACKEND_URL is not set
     backend_url = os.getenv("BACKEND_URL") or base_url or "http://localhost:7860"
+    verify_url = f"{backend_url}/verify-email/{token}"
     
-    if not username or not password:
-        print("CRITICAL ERROR: No email credentials found.")
+    # --- MAILTRAP HTTP API (SANDBOX TESTING) ---
+    mailtrap_token = os.getenv("MAILTRAP_TOKEN")
+    mailtrap_inbox_id = os.getenv("MAILTRAP_INBOX_ID")
+    
+    if not mailtrap_token or not mailtrap_inbox_id:
+        print("CRITICAL ERROR: MAILTRAP_TOKEN or MAILTRAP_INBOX_ID is missing! Please add them to your .env or HuggingFace Secrets.")
         return
         
-    verify_url = f"{backend_url}/verify-email/{token}"
-    msg = MIMEMultipart()
-    msg['From'] = username
-    msg['To'] = email
-    msg['Subject'] = "Please verify your email address"
+    url = f"https://sandbox.api.mailtrap.io/api/send/{mailtrap_inbox_id}"
     
-    html = f"""
-    <html>
-      <body>
-        <h2>Welcome to Smart WhatsApp Sender!</h2>
-        <p>Please click the link below to verify your email address:</p>
-        <a href="{verify_url}">Verify Email</a>
-        <br><br>
-        <p>Or paste this link into your browser:</p>
-        <p>{verify_url}</p>
-      </body>
-    </html>
-    """
-    msg.attach(MIMEText(html, 'html'))
+    payload = {
+        "to": [{"email": email}],
+        "from": {"email": "noreply@smartwhatsapp.com", "name": "Smart WhatsApp Sender"},
+        "subject": "Please verify your email address",
+        "html": f"""
+        <html>
+          <body>
+            <h2>Welcome to Smart WhatsApp Sender!</h2>
+            <p>Please click the link below to verify your email address:</p>
+            <a href="{verify_url}">Verify Email</a>
+            <br><br>
+            <p>Or paste this link into your browser:</p>
+            <p>{verify_url}</p>
+          </body>
+        </html>
+        """
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {mailtrap_token}",
+        "Content-Type": "application/json"
+    }
     
     try:
-        # HuggingFace blocks port 587 (Network is unreachable). 
-        # Attempting to use Port 465 (SMTP_SSL) which is sometimes allowed.
-        server = smtplib.SMTP_SSL(server_addr, 465, timeout=10)
-        server.login(username, password)
-        server.send_message(msg)
-        server.quit()
-        print(f"✅ Verification email sent to {email}")
+        # Port 443 (HTTPS) is NEVER blocked by HuggingFace!
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        if response.status_code in [200, 202]:
+            print(f"✅ Verification email sent to {email} via Mailtrap Dashboard")
+        else:
+            print(f"❌ Failed to send email via Mailtrap. Status: {response.status_code}, Response: {response.text}")
     except Exception as e:
-        print(f"❌ Failed to send email to {email}: {e}")
+        print(f"❌ Network Error calling Mailtrap API: {e}")
 
 # AUTH ROUTES
 @app.post("/register")
