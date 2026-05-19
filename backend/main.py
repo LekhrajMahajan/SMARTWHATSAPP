@@ -160,16 +160,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "your_email@gmail.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "your_app_password")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:7860")
-
 def send_verification_email(email: str, token: str):
-    verify_url = f"{BACKEND_URL}/verify-email/{token}"
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    server_addr = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    port = int(os.getenv("SMTP_PORT", 587))
+    username = os.getenv("SMTP_USERNAME")
+    password = os.getenv("SMTP_PASSWORD")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:7860")
+    
+    verify_url = f"{backend_url}/verify-email/{token}"
     msg = MIMEMultipart()
-    msg['From'] = SMTP_USERNAME
+    msg['From'] = username
     msg['To'] = email
     msg['Subject'] = "Please verify your email address"
     
@@ -188,14 +191,14 @@ def send_verification_email(email: str, token: str):
     msg.attach(MIMEText(html, 'html'))
     
     try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server = smtplib.SMTP(server_addr, port)
         server.starttls()
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.login(username, password)
         server.send_message(msg)
         server.quit()
-        print(f"Verification email sent to {email}")
+        print(f"✅ Verification email sent to {email}")
     except Exception as e:
-        print(f"Failed to send email to {email}: {e}")
+        print(f"❌ Failed to send email to {email}: {e}")
 
 # AUTH ROUTES
 @app.post("/register")
