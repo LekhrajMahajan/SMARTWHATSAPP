@@ -160,7 +160,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 
-def send_verification_email(email: str, token: str):
+def send_verification_email(email: str, token: str, base_url: str = None):
     from dotenv import load_dotenv
     load_dotenv()
     
@@ -168,7 +168,9 @@ def send_verification_email(email: str, token: str):
     port = int(os.getenv("SMTP_PORT", 587))
     username = os.getenv("SMTP_USERNAME")
     password = os.getenv("SMTP_PASSWORD")
-    backend_url = os.getenv("BACKEND_URL", "http://localhost:7860")
+    
+    # Use dynamically generated request URL if BACKEND_URL is not set
+    backend_url = os.getenv("BACKEND_URL") or base_url or "http://localhost:7860"
     
     if not username or not password:
         print("CRITICAL ERROR: SMTP_USERNAME or SMTP_PASSWORD environment variables are missing! Did you forget to add them to HuggingFace Secrets?")
@@ -208,6 +210,7 @@ def send_verification_email(email: str, token: str):
 # AUTH ROUTES
 @app.post("/register")
 async def register(
+    request: Request,
     background_tasks: BackgroundTasks,
     username: str = Form(...),
     email: str = Form(...),
@@ -228,8 +231,11 @@ async def register(
     )
     users_collection.insert_one(new_user.model_dump())
     
+    # Dynamically capture the HuggingFace space URL to build the verification link
+    base_url = str(request.base_url).rstrip("/")
+    
     # Use background tasks so the frontend UI doesn't hang
-    background_tasks.add_task(send_verification_email, email, token)
+    background_tasks.add_task(send_verification_email, email, token, base_url)
         
     return {"message": "Registration successful. Please check your email to verify your account."}
 
