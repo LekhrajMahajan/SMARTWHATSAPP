@@ -165,8 +165,11 @@ def send_verification_email(email: str, token: str, base_url: str = None):
     from dotenv import load_dotenv
     load_dotenv()
     
-    # Use dynamically generated request URL if BACKEND_URL is not set
-    backend_url = os.getenv("BACKEND_URL") or base_url or "http://localhost:7860"
+    # Use dynamically generated request URL if BACKEND_URL is not set or is the placeholder
+    backend_url = os.getenv("BACKEND_URL")
+    if not backend_url or "your-huggingface-space-url" in backend_url:
+        backend_url = base_url or "http://localhost:7860"
+        
     verify_url = f"{backend_url}/verify-email/{token}"
     
     # --- MAILTRAP HTTP API (SANDBOX TESTING) ---
