@@ -9,8 +9,23 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 import time
 import os
+import sys
+import builtins
 from datetime import datetime, timedelta
 from models import get_ist_time, is_within_ist_window
+
+# Force unbuffered standard output for real-time HuggingFace logs
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
+# Override built-in print to always flush immediately
+_original_print = builtins.print
+def _unbuffered_print(*args, **kwargs):
+    kwargs.setdefault('flush', True)
+    _original_print(*args, **kwargs)
+builtins.print = _unbuffered_print
 
 
 def type_message_with_newlines(driver, message_box, message):
