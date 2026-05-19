@@ -166,14 +166,16 @@ def send_verification_email(email: str, token: str, base_url: str = None):
     
     server_addr = os.getenv("SMTP_SERVER", "smtp.gmail.com")
     port = int(os.getenv("SMTP_PORT", 587))
-    username = os.getenv("SMTP_USERNAME")
-    password = os.getenv("SMTP_PASSWORD")
+    # TEMPORARY FALLBACK: Using the credentials directly since HuggingFace secrets are missing.
+    # WARNING: Please remove this password from your code if your GitHub repository is public!
+    username = os.getenv("SMTP_USERNAME", "lekhrajmahajan84@gmail.com")
+    password = os.getenv("SMTP_PASSWORD", "psla ynsb pirb diiq")
     
     # Use dynamically generated request URL if BACKEND_URL is not set
     backend_url = os.getenv("BACKEND_URL") or base_url or "http://localhost:7860"
     
     if not username or not password:
-        print("CRITICAL ERROR: SMTP_USERNAME or SMTP_PASSWORD environment variables are missing! Did you forget to add them to HuggingFace Secrets?")
+        print("CRITICAL ERROR: No email credentials found.")
         return
         
     verify_url = f"{backend_url}/verify-email/{token}"
