@@ -109,8 +109,8 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
     if is_headless:
         print("🌐 Running in HEADLESS mode (Forced for stability)")
         options.add_argument("--headless=new")
-        # Smaller window size = Much less RAM usage
-        options.add_argument("--window-size=800,600")
+        # Use a standard desktop window size to avoid responsive layout issues (missing message box)
+        options.add_argument("--window-size=1280,720")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
     # Explicitly set Chrome binary path for Linux environments
@@ -350,37 +350,33 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     print(f"[{username}] 🚀 Navigating to chat for {name} ({number})...")
                     url = f"https://web.whatsapp.com/send?phone={number}"
                     
-                    # Disable onbeforeunload to prevent "Leave site?" alerts from blocking driver.get
+                    # Soft navigation using DOM injection to prevent full page reload (much faster and avoids timeouts)
                     try:
-                        driver.execute_script("window.onbeforeunload = null;")
-                    except:
-                        pass
-                        
-                    try:
-                        driver.get(url)
+                        script = f"""
+                            var a = document.createElement('a');
+                            a.href = '{url}';
+                            a.style.display = 'none';
+                            document.body.appendChild(a);
+                            a.click();
+                        """
+                        driver.execute_script(script)
                     except Exception as e:
-                        print(f"[{username}] ⚠️ Navigation exception for {name}: {e}")
+                        print(f"[{username}] ⚠️ Soft navigation failed, falling back to driver.get(): {e}")
+                        # Disable onbeforeunload to prevent "Leave site?" alerts from blocking driver.get
                         try:
-                            # Try to dismiss any unexpected alert (like "Leave site?")
-                            alert = driver.switch_to.alert
-                            print(f"[{username}] ⚠️ Dismissing unexpected alert: {alert.text}")
-                            alert.accept() # Accept to proceed leaving the site
-                            # Retry navigation
-                            driver.get(url)
-                        except Exception as alert_err:
-                            print(f"[{username}] ⚠️ Error handling alert during navigation retry: {alert_err}")
-                            # Try one final time to navigate directly
-                            try:
-                                driver.get(url)
-                            except Exception as retry_err:
-                                raise Exception(f"Failed to navigate to WhatsApp chat: {retry_err}")
+                            driver.execute_script("window.onbeforeunload = null;")
+                        except:
+                            pass
+                        driver.get(url)
 
-                    # Wait for the message box with a shorter timeout (30s)
+                    # Wait for the message box
                     message_box = None
                     start_time = time.time()
                     
                     box_selectors = [
-                        # Modern WhatsApp Web (2024+) — most reliable
+                        # Modern Lexical WhatsApp Web (2024+)
+                        '//div[@role="textbox" and @data-lexical-editor="true"]',
+                        '//div[@id="main"]//div[@role="textbox" and @contenteditable="true"]',
                         '//div[@aria-label="Type a message"]',
                         '//div[@aria-placeholder="Type a message"]',
                         # Fallback: footer contenteditable
