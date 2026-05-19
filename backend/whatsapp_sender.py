@@ -213,6 +213,27 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     "div[data-ref] canvas",
                     "canvas",
                 ]
+                
+                logged_in_selectors = ["//div[@id='pane-side']", "//div[@data-testid='chat-list']"]
+
+                initial_login_check_time = time.time()
+                while time.time() - initial_login_check_time < 15: # Increased wait to 15s to allow WhatsApp to load session
+                    is_already_logged_in = False
+                    for sel in logged_in_selectors:
+                        if driver.find_elements(By.XPATH, sel):
+                            is_already_logged_in = True
+                            break
+                    if is_already_logged_in:
+                        break
+                    time.sleep(1)
+                    
+                if is_already_logged_in:
+                    print(f"[{username}] ✅ Session already exists. Proceeding directly to send messages.")
+                    if broadcast_func:
+                        broadcast_func({"type": "LOGIN_SUCCESS", "data": {}})
+                        print(f"[{username}] 📡 Sent LOGIN_SUCCESS to frontend (Session restored)")
+                    # Stabilization wait just to be safe
+                    time.sleep(3)
 
                 login_check_iterations = 0
                 while login_check_iterations < 60:  # 5 minutes max (5s * 60)
@@ -301,6 +322,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
             is_first_message = True  # First message sends immediately, rest wait 15s
             contact_index = 0
             for contact in batch:
+                if not is_first_message:
+                    print(f"[{username}] ⏳ Waiting 15s before next message...")
+                    time.sleep(15)
+                is_first_message = False
+
                 contact_index += 1
                 contact_start_time = time.time()
                 results["total_attempted"] += 1
@@ -464,16 +490,6 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     if on_status:
                         on_status(contact, "Sent")
                     
-                    # INTER-MESSAGE DELAY
-                    # First message fires instantly after QR login.
-                    # Every subsequent message waits exactly 15 seconds (IST-safe gap).
-                    if is_first_message:
-                        is_first_message = False
-                        print(f"[{username}] ⚡ First message sent immediately — no delay.")
-                    else:
-                        print(f"[{username}] ⏳ Waiting 15s before next message...")
-                        time.sleep(15)
-
                 except Exception as e:
                     print(f"[{username}] ❌ Failed for {name}: {e}")
                     results["failed_count"] += 1
