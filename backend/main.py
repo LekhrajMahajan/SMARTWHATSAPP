@@ -681,6 +681,15 @@ if not os.path.exists(frontend_dist):
 
 if os.path.exists(frontend_dist):
     print(f"✅ Serving frontend from: {frontend_dist}")
+    
+    @app.get("/")
+    @app.head("/")
+    async def read_index():
+        index_path = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"status": "ok", "message": "Smart WhatsApp Sender API is running"}
+
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
     
     @app.exception_handler(404)
