@@ -16,6 +16,8 @@ class User(BaseModel):
     email: str
     hashed_password: str
     linked_wa_number: Optional[str] = None
+    is_verified: bool = False
+    verification_token: Optional[str] = None
 
 class Contact(BaseModel):
     username: str

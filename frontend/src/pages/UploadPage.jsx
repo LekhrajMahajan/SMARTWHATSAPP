@@ -99,7 +99,20 @@ const UploadPage = () => {
             setQrLoading(true);
           } else if (data.type === 'QR_CODE') {
             setQrCode(data.data.image);
-            setQrLoading(false); // QR image is here, stop showing spinner
+            setQrLoading(false);
+          } else if (data.type === 'LOGIN_SUCCESS') {
+            // QR scanned! Close modal, switch to live session view
+            setQrCode(null);
+            setQrLoading(false);
+            setViewMode('realtime');
+            setResult({ success: true, text: '✅ WhatsApp connected! Sending messages now...' });
+          } else if (data.type === 'PROGRESS_UPDATE') {
+            // Keep result banner updated with live progress
+            const { current, total, name, sent, failed } = data.data;
+            setResult({
+              success: true,
+              text: `📤 Sending ${current}/${total} — ${name} | ✅ ${sent} sent  ❌ ${failed} failed`,
+            });
           } else if (data.type === 'DAILY_LIMIT_REACHED') {
             setResult({ success: false, text: 'Daily limit of 800 messages reached. Process paused until tomorrow.' });
           } else if (data.type === 'WAITING_FOR_WINDOW') {

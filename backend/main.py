@@ -1,5 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, File, Form, WebSocket, WebSocketDisconnect, Request, BackgroundTasks
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -7,6 +7,10 @@ import json
 import asyncio
 import os
 import functools
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from excel_reader import read_contacts
 from whatsapp_sender import send_messages
@@ -156,11 +160,47 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "your_email@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "your_app_password")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:7860")
 
+def send_verification_email(email: str, token: str):
+    verify_url = f"{BACKEND_URL}/verify-email/{token}"
+    msg = MIMEMultipart()
+    msg['From'] = SMTP_USERNAME
+    msg['To'] = email
+    msg['Subject'] = "Please verify your email address"
+    
+    html = f"""
+    <html>
+      <body>
+        <h2>Welcome to Smart WhatsApp Sender!</h2>
+        <p>Please click the link below to verify your email address:</p>
+        <a href="{verify_url}">Verify Email</a>
+        <br><br>
+        <p>Or paste this link into your browser:</p>
+        <p>{verify_url}</p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(html, 'html'))
+    
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print(f"Verification email sent to {email}")
+    except Exception as e:
+        print(f"Failed to send email to {email}: {e}")
 
 # AUTH ROUTES
 @app.post("/register")
 async def register(
+    background_tasks: BackgroundTasks,
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...)
@@ -170,13 +210,17 @@ async def register(
     if user_exists:
         raise HTTPException(status_code=400, detail="Username or email already registered")
     
+    token = secrets.token_urlsafe(32)
     new_user = User(
         username=username,
         email=email,
-        hashed_password=get_password_hash(password)
+        hashed_password=get_password_hash(password),
+        is_verified=False,
+        verification_token=token
     )
     users_collection.insert_one(new_user.model_dump())
-    return {"message": "User registered successfully"}
+    background_tasks.add_task(send_verification_email, email, token)
+    return {"message": "Registration successful. Please check your email to verify your account."}
 
 @app.post("/token")
 async def login(
@@ -191,8 +235,41 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Treat existing users without the is_verified field as True (backward compatibility)
+    if user.get("is_verified") is False:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not verified. Please check your inbox.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     access_token = create_access_token(data={"sub": user["username"]})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/verify-email/{token}", response_class=HTMLResponse)
+async def verify_email(token: str):
+    user = users_collection.find_one({"verification_token": token})
+    if not user:
+        return """
+        <html><body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+        <h2 style="color:red;">Invalid or expired verification link.</h2>
+        </body></html>
+        """
+    
+    users_collection.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"is_verified": True, "verification_token": None}}
+    )
+    
+    return """
+    <html>
+      <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+        <h2 style="color:green;">Email Verified Successfully! ✅</h2>
+        <p>You can now return to the app and log in.</p>
+        <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #25d366; color: white; border: none; border-radius: 5px;">Close Window</button>
+      </body>
+    </html>
+    """
 
 
 # WEBSOCKET CONNECTION MANAGER
