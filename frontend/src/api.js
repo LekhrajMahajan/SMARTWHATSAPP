@@ -109,3 +109,31 @@ export async function getStatus() {
 
   return res.json();
 }
+
+/**
+ * POST /subscribe
+ * Activate a subscription plan
+ */
+export async function subscribeToPlan(plan) {
+  const res = await fetch(`${BASE_URL}/subscribe`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({ plan }),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return null;
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Subscription failed: ${text}`);
+  }
+
+  return res.json();
+}

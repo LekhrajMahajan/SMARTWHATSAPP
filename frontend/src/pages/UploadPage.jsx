@@ -1,6 +1,6 @@
 // UploadPage.jsx - Main process page: upload Excel + write message + send + view logs
 import { useState, useEffect, useRef } from 'react';
-import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, BASE_URL } from '../api';
+import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, subscribeToPlan, BASE_URL } from '../api';
 
 const ExpandableMessage = ({ text }) => {
   const [expanded, setExpanded] = useState(false);
@@ -44,6 +44,10 @@ const UploadPage = () => {
   const [isWithinWindow, setIsWithinWindow] = useState(true);
   const [qrCode, setQrCode] = useState(null); // Base64 QR image
   const [qrLoading, setQrLoading] = useState(false); // True while waiting for QR to appear
+  
+  // Subscription States
+  const [isSubscribed, setIsSubscribed] = useState(null); // null = checking, true/false
+  const [subscribing, setSubscribing] = useState(null); // plan ID being activated (loading state)
 
   // ── Cooldown Timer logic ───────────────────────────────────────────────────
   useEffect(() => {
@@ -176,9 +180,13 @@ const UploadPage = () => {
             cooldownUntil: statusData.cooldown_until
           });
           setIsWithinWindow(statusData.is_within_window);
+          setIsSubscribed(statusData.is_subscribed);
+        } else {
+          setIsSubscribed(false);
         }
       } catch (err) {
         console.error('Failed to load status:', err);
+        setIsSubscribed(false);
       }
 
       try {
@@ -192,6 +200,34 @@ const UploadPage = () => {
     };
     init();
   }, []);
+
+  const handleActivatePlan = async (planName) => {
+    setSubscribing(planName);
+    try {
+      // Simulate secure bank payment gateway call (INR pricing)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const response = await subscribeToPlan(planName);
+      if (response && response.success) {
+        setIsSubscribed(true);
+        // Refresh status details to sync from server
+        const statusData = await getStatus();
+        if (statusData) {
+          setCooldown(statusData.remaining_cooldown);
+          setStatusInfo({
+            sentToday: statusData.sent_today,
+            dailyLimit: statusData.daily_limit,
+            cooldownUntil: statusData.cooldown_until
+          });
+          setIsWithinWindow(statusData.is_within_window);
+        }
+      }
+    } catch (error) {
+      alert(`Activation failed: ${error.message}`);
+    } finally {
+      setSubscribing(null);
+    }
+  };
 
   // ── Drag & Drop handlers ───────────────────────────────────────────────────
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -306,6 +342,175 @@ const UploadPage = () => {
   };
 
   const displayLogs = viewMode === 'history' ? logs : realtimeLogs;
+
+  if (isSubscribed === null) {
+    return (
+      <div className="flex-grow pt-32 flex flex-col items-center justify-center min-h-[60vh] text-[#bbcbb9] gap-4">
+        <div className="w-12 h-12 border-4 border-[#25d366]/20 border-t-[#25d366] rounded-full animate-spin" />
+        <p className="text-lg font-medium animate-pulse text-[#25d366]">Checking subscription status...</p>
+      </div>
+    );
+  }
+
+  if (isSubscribed === false) {
+    return (
+      <section className="flex-grow pt-24 md:pt-32 px-4 md:px-margin lg:px-lg max-w-7xl mx-auto w-full relative z-10 pb-20 md:pb-32 flex flex-col items-center">
+        {/* Background neon glows */}
+        <div className="absolute neon-underglow-abs w-[300px] md:w-[800px] h-[300px] md:h-[800px] top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+
+        <header className="text-center mb-12 md:mb-16 px-4">
+          <div className="inline-flex items-center gap-2 bg-[#25d366]/10 border border-[#25d366]/20 px-4 py-2 rounded-full mb-4">
+            <span className="w-2 h-2 rounded-full bg-[#25d366] animate-pulse"></span>
+            <span className="text-[#25d366] text-xs font-bold uppercase tracking-widest">Pricing Plans</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-[64px] font-[900] leading-[1.1] tracking-[-0.03em] text-[#dce5d8] mb-6 drop-shadow-[0_0_20px_rgba(37,211,102,0.2)]">
+            Choose Your Campaign Plan
+          </h1>
+          <p className="text-base md:text-lg lg:text-xl font-[400] leading-[1.6] text-[#bbcbb9] max-w-2xl mx-auto">
+            Get instant access to risk-free, automated bulk sending. Choose a plan to unlock file uploads and start your campaign.
+          </p>
+        </header>
+
+        {/* Plan Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
+          {/* Plan 1 */}
+          <div className="bg-[#121b22]/70 backdrop-blur-xl border border-[#869584]/20 p-8 rounded-2xl flex flex-col justify-between hover:border-[#25d366]/50 transition-all duration-300 relative group shadow-[0_0_30px_rgba(37,211,102,0.05)]">
+            <div>
+              <h3 className="text-xl font-bold text-[#dce5d8] mb-2">1 Month Plan</h3>
+              <p className="text-sm text-[#bbcbb9]/70 mb-6">Perfect for small, quick campaigns.</p>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-5xl font-extrabold text-[#25d366]">₹499</span>
+                <span className="text-xs text-[#bbcbb9]/60">/ month</span>
+              </div>
+              <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  800 daily message limit
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Personalized tags support
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Smart 1-hour batch cooldown
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Email & live progress reports
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={() => handleActivatePlan('1_month')}
+              disabled={subscribing !== null}
+              className="w-full bg-[#19221a] hover:bg-[#25d366] hover:text-[#003915] text-[#25d366] border border-[#25d366]/30 py-3.5 rounded-full font-bold transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              {subscribing === '1_month' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Activate Plan'
+              )}
+            </button>
+          </div>
+
+          {/* Plan 2 - Popular */}
+          <div className="bg-[#152719]/80 backdrop-blur-xl border-2 border-[#25d366] p-8 rounded-2xl flex flex-col justify-between hover:shadow-[0_0_45px_rgba(37,211,102,0.15)] transition-all duration-300 relative group shadow-[0_0_30px_rgba(37,211,102,0.1)] md:-translate-y-2">
+            <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-[#25d366] text-[#003915] text-[10px] uppercase tracking-widest font-extrabold px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(37,211,102,0.4)]">
+              Most Popular
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-[#dce5d8] mb-2">3 Months Plan</h3>
+              <p className="text-sm text-[#bbcbb9]/70 mb-6">Best for growing businesses & marketing.</p>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-5xl font-extrabold text-[#25d366]">₹1,199</span>
+                <span className="text-xs text-[#bbcbb9]/60">/ 3 months</span>
+              </div>
+              <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">
+                <li className="flex items-center gap-3 font-semibold text-[#dce5d8]">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Everything in 1 Month plan
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Priority campaign execution
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Saves 20% over monthly
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Premium dedicated support
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={() => handleActivatePlan('3_months')}
+              disabled={subscribing !== null}
+              className="w-full bg-[#25d366] hover:bg-[#4ff07f] text-[#003915] py-3.5 rounded-full font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(37,211,102,0.2)] hover:shadow-[0_0_35px_rgba(37,211,102,0.4)]"
+            >
+              {subscribing === '3_months' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Activate Plan'
+              )}
+            </button>
+          </div>
+
+          {/* Plan 3 */}
+          <div className="bg-[#121b22]/70 backdrop-blur-xl border border-[#869584]/20 p-8 rounded-2xl flex flex-col justify-between hover:border-[#25d366]/50 transition-all duration-300 relative group shadow-[0_0_30px_rgba(37,211,102,0.05)]">
+            <div>
+              <h3 className="text-xl font-bold text-[#dce5d8] mb-2">6 Months Plan</h3>
+              <p className="text-sm text-[#bbcbb9]/70 mb-6">Best value for long-term campaigns.</p>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-5xl font-extrabold text-[#25d366]">₹1,999</span>
+                <span className="text-xs text-[#bbcbb9]/60">/ 6 months</span>
+              </div>
+              <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">
+                <li className="flex items-center gap-3 font-semibold text-[#dce5d8]">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Everything in 3 Months plan
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Saves 33% over monthly
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Uncapped bulk processing
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  1-on-1 onboarding session
+                </li>
+              </ul>
+            </div>
+            <button
+              onClick={() => handleActivatePlan('6_months')}
+              disabled={subscribing !== null}
+              className="w-full bg-[#19221a] hover:bg-[#25d366] hover:text-[#003915] text-[#25d366] border border-[#25d366]/30 py-3.5 rounded-full font-bold transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              {subscribing === '6_months' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Activate Plan'
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="flex-grow pt-24 md:pt-32 px-4 md:px-margin lg:px-lg max-w-7xl mx-auto w-full relative z-10 pb-20 md:pb-32">

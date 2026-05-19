@@ -18,6 +18,9 @@ class User(BaseModel):
     linked_wa_number: Optional[str] = None
     is_verified: bool = False
     verification_token: Optional[str] = None
+    is_subscribed: bool = False
+    subscription_plan: Optional[str] = None
+    subscription_expiry: Optional[datetime] = None
 
 class Contact(BaseModel):
     username: str
