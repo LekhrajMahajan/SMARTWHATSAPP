@@ -99,10 +99,9 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
     options.add_argument("--disable-software-rasterizer")
     options.add_argument("--disable-dev-config")
     
-    # Disable images to save massive RAM
-    prefs = {"profile.managed_default_content_settings.images": 2}
-    options.add_experimental_option("prefs", prefs)
-    options.add_argument("--blink-settings=imagesEnabled=false")
+    # NOTE: We do NOT disable images/canvas here.
+    # WhatsApp QR codes are rendered on a <canvas> element, and disabling
+    # image/canvas rendering via blink-settings prevents the QR from appearing.
     
     # Headless mode for cloud deployment (Render/Linux)
     # FORCING TRUE by default for Render stability
@@ -197,8 +196,25 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
 
                 driver.get("https://web.whatsapp.com")
                 print(f"[{username}] Waiting for WhatsApp login...")
-                
+
+                # Immediately notify frontend that we are waiting for QR
+                if broadcast_func:
+                    broadcast_func({"type": "QR_LOADING", "data": {}})
+                    print(f"[{username}] 📡 Sent QR_LOADING signal to frontend")
+
+                # Wait a few seconds for WhatsApp Web to fully render the QR page
+                time.sleep(5)
+
                 # QR Code relay for headless mode
+                # QR selectors — from most specific to least specific
+                qr_selectors = [
+                    "div[data-testid='qrcode'] canvas",
+                    "canvas[aria-label]",
+                    "div._akau canvas",
+                    "div[data-ref] canvas",
+                    "canvas",
+                ]
+
                 login_check_iterations = 0
                 while login_check_iterations < 60:  # 5 minutes max (5s * 60)
                     try:
@@ -239,19 +255,32 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                                 
                             break
                         
-                        # Look for QR code
-                        try:
-                            qr_elements = driver.find_elements(By.CSS_SELECTOR, "canvas")
-                            if qr_elements and broadcast_func:
-                                # Take screenshot of the QR code canvas
-                                qr_base64 = qr_elements[0].screenshot_as_base64
-                                broadcast_func({
-                                    "type": "QR_CODE",
-                                    "data": {"image": f"data:image/png;base64,{qr_base64}"}
-                                })
-                                print(f"[{username}] 📲 QR Code sent to frontend")
-                        except Exception as e:
-                            print(f"[{username}] Error capturing QR: {e}")
+                        # Look for QR code canvas using multiple selectors
+                        qr_found = False
+                        for selector in qr_selectors:
+                            try:
+                                qr_elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                                if qr_elements:
+                                    # Verify the canvas has actual content (non-zero dimensions)
+                                    el = qr_elements[0]
+                                    width = driver.execute_script("return arguments[0].width", el)
+                                    height = driver.execute_script("return arguments[0].height", el)
+                                    if width and height and width > 10 and height > 10:
+                                        qr_base64 = el.screenshot_as_base64
+                                        if broadcast_func:
+                                            broadcast_func({
+                                                "type": "QR_CODE",
+                                                "data": {"image": f"data:image/png;base64,{qr_base64}"}
+                                            })
+                                        print(f"[{username}] 📲 QR Code captured via '{selector}' and sent to frontend ({width}x{height}px)")
+                                        qr_found = True
+                                        break
+                            except Exception as sel_err:
+                                print(f"[{username}] Selector '{selector}' failed: {sel_err}")
+                                continue
+
+                        if not qr_found:
+                            print(f"[{username}] ⏳ QR canvas not ready yet (attempt {login_check_iterations + 1})")
                         
                     except Exception as e:
                         print(f"[{username}] Error during login check: {e}")

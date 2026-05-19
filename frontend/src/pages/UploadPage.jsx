@@ -43,6 +43,7 @@ const UploadPage = () => {
   const [statusInfo, setStatusInfo] = useState({ sentToday: 0, dailyLimit: 800 });
   const [isWithinWindow, setIsWithinWindow] = useState(true);
   const [qrCode, setQrCode] = useState(null); // Base64 QR image
+  const [qrLoading, setQrLoading] = useState(false); // True while waiting for QR to appear
 
   // ── Cooldown Timer logic ───────────────────────────────────────────────────
   useEffect(() => {
@@ -88,16 +89,23 @@ const UploadPage = () => {
           } else if (data.type === 'PROCESS_STARTED') {
             setLoading(true);
             setResult(null);
+            setQrLoading(true); // Show "launching" spinner immediately
           } else if (data.type === 'PROCESS_FINISHED') {
             setLoading(false);
+            setQrLoading(false);
+            setQrCode(null);
+          } else if (data.type === 'QR_LOADING') {
+            // Browser opened — QR will arrive in a few seconds
+            setQrLoading(true);
+          } else if (data.type === 'QR_CODE') {
+            setQrCode(data.data.image);
+            setQrLoading(false); // QR image is here, stop showing spinner
           } else if (data.type === 'DAILY_LIMIT_REACHED') {
             setResult({ success: false, text: 'Daily limit of 800 messages reached. Process paused until tomorrow.' });
           } else if (data.type === 'WAITING_FOR_WINDOW') {
             setIsWithinWindow(false);
           } else if (data.type === 'WINDOW_RESUMED') {
             setIsWithinWindow(true);
-          } else if (data.type === 'QR_CODE') {
-            setQrCode(data.data.image);
           }
         } catch { /* ignore parse errors */ }
       };
@@ -217,6 +225,7 @@ const UploadPage = () => {
     setLoading(true);
     setResult(null);
     setQrCode(null);
+    setQrLoading(false);
     setRealtimeLogs([]);
     setViewMode('realtime');
 
@@ -553,21 +562,62 @@ const UploadPage = () => {
         )}
       </div>
 
-      {/* WhatsApp QR Display (MODAL-ISH) */}
-      {qrCode && loading && (
+      {/* WhatsApp QR Display — shown when waiting for QR or when QR arrives */}
+      {loading && (qrLoading || qrCode) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-[#121b22] border border-[#25d366]/30 p-8 rounded-2xl max-w-md w-full text-center shadow-[0_0_50px_rgba(37,211,102,0.2)]">
-            <h3 className="text-2xl font-bold text-[#dce5d8] mb-4">Login Required</h3>
-            <p className="text-[#bbcbb9] mb-6 text-sm">
-              Please scan this QR code with your WhatsApp app to start sending.
-            </p>
-            <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-inner">
-              <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64" />
-            </div>
-            <div className="flex items-center justify-center gap-3 text-xs text-[#25d366] font-medium animate-pulse">
-              <span className="material-symbols-outlined text-sm">sync</span>
-              Waiting for scan...
-            </div>
+            <h3 className="text-2xl font-bold text-[#dce5d8] mb-4">WhatsApp Login Required</h3>
+
+            {qrCode ? (
+              /* QR code is ready — show it */
+              <>
+                <p className="text-[#bbcbb9] mb-6 text-sm">
+                  Scan this QR code with your <strong className="text-[#dce5d8]">WhatsApp</strong> app to start sending.
+                </p>
+                <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-inner">
+                  <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64" />
+                </div>
+                <div className="flex items-center justify-center gap-3 text-xs text-[#25d366] font-medium animate-pulse">
+                  <span className="material-symbols-outlined text-sm">sync</span>
+                  Waiting for scan...
+                </div>
+              </>
+            ) : (
+              /* QR not arrived yet — show launcher spinner */
+              <>
+                <p className="text-[#bbcbb9] mb-8 text-sm">
+                  Launching WhatsApp Web in the background...<br />
+                  <span className="text-[#25d366] font-semibold">QR code will appear in a few seconds.</span>
+                </p>
+                <div className="flex flex-col items-center gap-5 mb-8">
+                  {/* Pulsing WhatsApp logo */}
+                  <div className="relative w-20 h-20">
+                    <div className="absolute inset-0 rounded-full bg-[#25d366]/20 animate-ping" />
+                    <div className="absolute inset-0 rounded-full bg-[#25d366]/10 animate-ping" style={{ animationDelay: '0.5s' }} />
+                    <div className="relative z-10 w-20 h-20 rounded-full bg-[#25d366]/20 border border-[#25d366]/40 flex items-center justify-center">
+                      <svg viewBox="0 0 24 24" className="w-10 h-10 fill-[#25d366]" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.524 5.85L0 24l6.335-1.508C8.05 23.447 9.987 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.655-.51-5.18-1.395l-.37-.22-3.762.895.939-3.664-.241-.378A9.946 9.946 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                      </svg>
+                    </div>
+                  </div>
+                  {/* Step progress */}
+                  <div className="flex items-center gap-2 text-xs text-[#bbcbb9]">
+                    <span className="w-5 h-5 rounded-full bg-[#25d366] text-[#003915] font-bold flex items-center justify-center text-[10px]">✓</span>
+                    <span className="text-[#25d366]">Campaign uploaded</span>
+                    <span className="text-[#3c4a3d] mx-1">›</span>
+                    <span className="w-5 h-5 rounded-full bg-[#25d366] text-[#003915] font-bold flex items-center justify-center text-[10px]">✓</span>
+                    <span className="text-[#25d366]">Browser launching</span>
+                    <span className="text-[#3c4a3d] mx-1">›</span>
+                    <span className="w-5 h-5 rounded-full border border-[#25d366]/50 flex items-center justify-center">
+                      <span className="w-2 h-2 rounded-full bg-[#25d366] animate-pulse" />
+                    </span>
+                    <span className="text-[#dce5d8]">Loading QR...</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-[#bbcbb9]/50">Keep this tab open. Do not refresh.</p>
+              </>
+            )}
           </div>
         </div>
       )}
