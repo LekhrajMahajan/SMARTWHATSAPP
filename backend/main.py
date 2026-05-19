@@ -203,7 +203,6 @@ def send_verification_email(email: str, token: str):
 # AUTH ROUTES
 @app.post("/register")
 async def register(
-    background_tasks: BackgroundTasks,
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...)
@@ -222,7 +221,13 @@ async def register(
         verification_token=token
     )
     users_collection.insert_one(new_user.model_dump())
-    background_tasks.add_task(send_verification_email, email, token)
+    
+    # Send email synchronously so we can guarantee execution and see any errors immediately
+    try:
+        send_verification_email(email, token)
+    except Exception as e:
+        print(f"CRITICAL ERROR in send_verification_email: {e}")
+        
     return {"message": "Registration successful. Please check your email to verify your account."}
 
 @app.post("/token")
