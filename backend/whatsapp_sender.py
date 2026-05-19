@@ -338,8 +338,10 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
             contact_index = 0
             for contact in batch:
                 if not is_first_message:
-                    print(f"[{username}] ⏳ Waiting 15s before next message...")
-                    time.sleep(15)
+                    # driver.get() inherently takes ~10-15s to reload the page on HuggingFace.
+                    # We reduce the explicit wait to 3s so the *total* gap between messages is ~15 seconds.
+                    print(f"[{username}] ⏳ Waiting 3s (plus page load time) before next message...")
+                    time.sleep(3)
                 is_first_message = False
 
                 contact_index += 1
