@@ -137,3 +137,60 @@ export async function subscribeToPlan(plan) {
 
   return res.json();
 }
+
+/**
+ * POST /api/payment/create-order
+ * Create a new Razorpay order
+ */
+export async function createRazorpayOrder(plan) {
+  const res = await fetch(`${BASE_URL}/api/payment/create-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({ plan }),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return null;
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Order creation failed: ${text}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * POST /api/payment/verify
+ * Verify Razorpay payment and activate subscription
+ */
+export async function verifyPayment(paymentDetails) {
+  const res = await fetch(`${BASE_URL}/api/payment/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(paymentDetails),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return null;
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Payment verification failed: ${text}`);
+  }
+
+  return res.json();
+}
+

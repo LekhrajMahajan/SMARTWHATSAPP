@@ -1,6 +1,6 @@
 // UploadPage.jsx - Main process page: upload Excel + write message + send + view logs
 import { useState, useEffect, useRef } from 'react';
-import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, subscribeToPlan, BASE_URL } from '../api';
+import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, subscribeToPlan, createRazorpayOrder, verifyPayment, BASE_URL } from '../api';
 
 const ExpandableMessage = ({ text }) => {
   const [expanded, setExpanded] = useState(false);
@@ -48,6 +48,18 @@ const UploadPage = () => {
   // Subscription States
   const [isSubscribed, setIsSubscribed] = useState(null); // null = checking, true/false
   const [subscribing, setSubscribing] = useState(null); // plan ID being activated (loading state)
+
+  // ── Load Razorpay Checkout Script ──────────────────────────────────────────
+  useEffect(() => {
+    const scriptId = 'razorpay-checkout-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
 
   // ── Cooldown Timer logic ───────────────────────────────────────────────────
   useEffect(() => {
@@ -204,27 +216,118 @@ const UploadPage = () => {
   const handleActivatePlan = async (planName) => {
     setSubscribing(planName);
     try {
-      // Simulate secure bank payment gateway call (INR pricing)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const response = await subscribeToPlan(planName);
-      if (response && response.success) {
-        setIsSubscribed(true);
-        // Refresh status details to sync from server
-        const statusData = await getStatus();
-        if (statusData) {
-          setCooldown(statusData.remaining_cooldown);
-          setStatusInfo({
-            sentToday: statusData.sent_today,
-            dailyLimit: statusData.daily_limit,
-            cooldownUntil: statusData.cooldown_until
-          });
-          setIsWithinWindow(statusData.is_within_window);
-        }
+      // 1. Create order on the backend
+      const orderData = await createRazorpayOrder(planName);
+      if (!orderData || !orderData.order_id) {
+        throw new Error("Failed to create Razorpay order.");
       }
+
+      // 2. If it's a developer/mock order (starts with order_mock_)
+      if (orderData.order_id.startsWith("order_mock_") || orderData.is_mock) {
+        console.log(`ℹ️ Developer/Demo Mode detected. Simulating transaction for plan: ${planName}`);
+        
+        // Wait 1.5 seconds to simulate payment processing beautifully
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Complete mock verification
+        const verifyRes = await verifyPayment({
+          razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 11)}`,
+          razorpay_order_id: orderData.order_id,
+          razorpay_signature: "mock_signature_bypass",
+          plan: planName
+        });
+
+        if (verifyRes && verifyRes.success) {
+          setIsSubscribed(true);
+          alert("🎉 Plan activated successfully! (Developer/Mock Payment Approved)");
+          
+          // Refresh status details
+          const statusData = await getStatus();
+          if (statusData) {
+            setCooldown(statusData.remaining_cooldown);
+            setStatusInfo({
+              sentToday: statusData.sent_today,
+              dailyLimit: statusData.daily_limit,
+              cooldownUntil: statusData.cooldown_until
+            });
+            setIsWithinWindow(statusData.is_within_window);
+          }
+        } else {
+          throw new Error("Mock verification failed.");
+        }
+        return;
+      }
+
+      // 3. Otherwise, initiate standard Razorpay Checkout
+      if (!window.Razorpay) {
+        throw new Error("Razorpay SDK failed to load. Please refresh the page and try again.");
+      }
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount, // in Paise
+        currency: orderData.currency,
+        name: "Smart WhatsApp Sender",
+        description: `Activate Plan: ${planName.replace('_', ' ')}`,
+        order_id: orderData.order_id,
+        handler: async function (response) {
+          try {
+            setSubscribing(planName);
+            const verifyRes = await verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              plan: planName
+            });
+
+            if (verifyRes && verifyRes.success) {
+              setIsSubscribed(true);
+              alert("🎉 Plan activated successfully! Welcome to your new plan.");
+              
+              // Refresh status
+              const statusData = await getStatus();
+              if (statusData) {
+                setCooldown(statusData.remaining_cooldown);
+                setStatusInfo({
+                  sentToday: statusData.sent_today,
+                  dailyLimit: statusData.daily_limit,
+                  cooldownUntil: statusData.cooldown_until
+                });
+                setIsWithinWindow(statusData.is_within_window);
+              }
+            } else {
+              alert("❌ Payment verification failed. Please contact support.");
+            }
+          } catch (err) {
+            alert(`❌ Verification failed: ${err.message}`);
+          } finally {
+            setSubscribing(null);
+          }
+        },
+        prefill: {
+          name: localStorage.getItem('username') || '',
+          email: '',
+          contact: ''
+        },
+        theme: {
+          color: "#25d366" // Premium WhatsApp green/emerald brand color
+        },
+        modal: {
+          ondismiss: function() {
+            setSubscribing(null);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        alert(`❌ Payment failed: ${response.error.description}`);
+        setSubscribing(null);
+      });
+      rzp.open();
+
     } catch (error) {
-      alert(`Activation failed: ${error.message}`);
-    } finally {
+      alert(`❌ Activation failed: ${error.message}`);
       setSubscribing(null);
     }
   };

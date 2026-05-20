@@ -84,6 +84,10 @@ if not SECRET_KEY:
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))
 
+# RAZORPAY CONFIG
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_placeholder_id")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "rzp_test_placeholder_secret")
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
 
@@ -528,6 +532,134 @@ async def subscribe(request: Request, current_user: dict = Depends(get_current_u
         "subscription_plan": plan,
         "subscription_expiry": str(expiry)
     }
+
+# RAZORPAY CREATE ORDER API
+@app.post("/api/payment/create-order")
+async def create_razorpay_order(request: Request, current_user: dict = Depends(get_current_user)):
+    try:
+        data = await request.json()
+        plan = data.get("plan")
+        
+        if plan not in ["1_month", "3_months", "6_months"]:
+            raise HTTPException(status_code=400, detail="Invalid subscription plan")
+            
+        prices = {
+            "1_month": 150000,    # ₹1,500
+            "3_months": 450000,   # ₹4,500
+            "6_months": 750000    # ₹7,500
+        }
+        amount = prices[plan]
+        
+        # Fallback if keys are placeholders (developer demo mode)
+        if "placeholder" in RAZORPAY_KEY_ID or "placeholder" in RAZORPAY_KEY_SECRET:
+            mock_order_id = f"order_mock_{secrets.token_hex(8)}"
+            return {
+                "order_id": mock_order_id,
+                "amount": amount,
+                "currency": "INR",
+                "key_id": RAZORPAY_KEY_ID,
+                "is_mock": True
+            }
+            
+        # Call Razorpay Orders API
+        auth = (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
+        payload = {
+            "amount": amount,
+            "currency": "INR",
+            "receipt": f"receipt_{current_user['username']}_{int(datetime.now().timestamp())}"
+        }
+        
+        response = requests.post(
+            "https://api.razorpay.com/v1/orders",
+            json=payload,
+            auth=auth,
+            timeout=15
+        )
+        
+        if not response.ok:
+            print(f"Razorpay Order Error: Status={response.status_code}, Body={response.text}")
+            raise HTTPException(status_code=500, detail=f"Razorpay order creation failed: {response.text}")
+            
+        order_data = response.json()
+        return {
+            "order_id": order_data["id"],
+            "amount": amount,
+            "currency": "INR",
+            "key_id": RAZORPAY_KEY_ID,
+            "is_mock": False
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        print(f"Error in create_razorpay_order: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# RAZORPAY VERIFY PAYMENT API
+@app.post("/api/payment/verify")
+async def verify_payment(request: Request, current_user: dict = Depends(get_current_user)):
+    import hmac
+    import hashlib
+    
+    try:
+        data = await request.json()
+        payment_id = data.get("razorpay_payment_id")
+        order_id = data.get("razorpay_order_id")
+        signature = data.get("razorpay_signature")
+        plan = data.get("plan")
+        
+        if not all([payment_id, order_id, signature, plan]):
+            raise HTTPException(status_code=400, detail="Missing required payment credentials")
+            
+        if plan not in ["1_month", "3_months", "6_months"]:
+            raise HTTPException(status_code=400, detail="Invalid subscription plan")
+            
+        is_valid = False
+        if order_id.startswith("order_mock_"):
+            is_valid = True
+            print(f"⚠️ Developer Mode: Accepting mock payment signature for {current_user['username']}")
+        else:
+            msg = f"{order_id}|{payment_id}".encode("utf-8")
+            generated_signature = hmac.new(
+                RAZORPAY_KEY_SECRET.encode("utf-8"),
+                msg,
+                hashlib.sha256
+            ).hexdigest()
+            is_valid = hmac.compare_digest(generated_signature, signature)
+            
+        if not is_valid:
+            raise HTTPException(status_code=400, detail="Payment verification failed. Invalid signature.")
+            
+        days = 30
+        if plan == "3_months":
+            days = 90
+        elif plan == "6_months":
+            days = 180
+            
+        expiry = datetime.now(timezone.utc) + timedelta(days=days)
+        
+        users_collection.update_one(
+            {"username": current_user["username"]},
+            {
+                "$set": {
+                    "is_subscribed": True,
+                    "subscription_plan": plan,
+                    "subscription_expiry": expiry
+                }
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Subscription activated successfully!",
+            "is_subscribed": True,
+            "subscription_plan": plan,
+            "subscription_expiry": str(expiry)
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        print(f"Error in verify_payment: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # CLEAR ALL MESSAGE LOGS
