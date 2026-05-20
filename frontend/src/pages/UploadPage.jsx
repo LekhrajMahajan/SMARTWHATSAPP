@@ -379,7 +379,7 @@ const UploadPage = () => {
               <h3 className="text-xl font-bold text-[#dce5d8] mb-2">1 Month Plan</h3>
               <p className="text-sm text-[#bbcbb9]/70 mb-6">Perfect for small, quick campaigns.</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-5xl font-extrabold text-[#25d366]">₹499</span>
+                <span className="text-5xl font-extrabold text-[#25d366]">₹1,500</span>
                 <span className="text-xs text-[#bbcbb9]/60">/ month</span>
               </div>
               <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">
@@ -389,11 +389,19 @@ const UploadPage = () => {
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Personalized tags support
+                  10:00 AM - 06:00 PM IST window
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  100 messages per batch limit
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
                   Smart 1-hour batch cooldown
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Personalized tags support
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
@@ -426,25 +434,33 @@ const UploadPage = () => {
               <h3 className="text-xl font-bold text-[#dce5d8] mb-2">3 Months Plan</h3>
               <p className="text-sm text-[#bbcbb9]/70 mb-6">Best for growing businesses & marketing.</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-5xl font-extrabold text-[#25d366]">₹1,199</span>
+                <span className="text-5xl font-extrabold text-[#25d366]">₹4,500</span>
                 <span className="text-xs text-[#bbcbb9]/60">/ 3 months</span>
               </div>
               <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">
-                <li className="flex items-center gap-3 font-semibold text-[#dce5d8]">
+                <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Everything in 1 Month plan
+                  800 daily message limit
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Priority campaign execution
+                  10:00 AM - 06:00 PM IST window
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Saves 20% over monthly
+                  100 messages per batch limit
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Premium dedicated support
+                  Smart 1-hour batch cooldown
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Personalized tags support
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Email & live progress reports
                 </li>
               </ul>
             </div>
@@ -470,25 +486,33 @@ const UploadPage = () => {
               <h3 className="text-xl font-bold text-[#dce5d8] mb-2">6 Months Plan</h3>
               <p className="text-sm text-[#bbcbb9]/70 mb-6">Best value for long-term campaigns.</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-5xl font-extrabold text-[#25d366]">₹1,999</span>
+                <span className="text-5xl font-extrabold text-[#25d366]">₹7,500</span>
                 <span className="text-xs text-[#bbcbb9]/60">/ 6 months</span>
               </div>
               <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">
-                <li className="flex items-center gap-3 font-semibold text-[#dce5d8]">
+                <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Everything in 3 Months plan
+                  800 daily message limit
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Saves 33% over monthly
+                  10:00 AM - 06:00 PM IST window
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  Uncapped bulk processing
+                  100 messages per batch limit
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
-                  1-on-1 onboarding session
+                  Smart 1-hour batch cooldown
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Personalized tags support
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#25d366] text-lg">check_circle</span>
+                  Email & live progress reports
                 </li>
               </ul>
             </div>
