@@ -7,6 +7,7 @@ import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import UploadPage from './pages/UploadPage';
 import LoginPage from './pages/LoginPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -62,6 +63,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <UploadPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/subscription" 
+            element={
+              <ProtectedRoute>
+                <SubscriptionPage />
               </ProtectedRoute>
             } 
           />

@@ -7,6 +7,7 @@ const Navbar = () => {
   const token = localStorage.getItem('token');
   const [isDark] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(() => localStorage.getItem('isSubscribed') === 'true');
 
   useEffect(() => {
     if (isDark) {
@@ -15,6 +16,15 @@ const Navbar = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
+
+  useEffect(() => {
+    const handleSubUpdate = () => {
+      setIsSubscribed(localStorage.getItem('isSubscribed') === 'true');
+    };
+    window.addEventListener('subscriptionUpdate', handleSubUpdate);
+    handleSubUpdate();
+    return () => window.removeEventListener('subscriptionUpdate', handleSubUpdate);
+  }, [location.pathname]);
 
 
 
@@ -80,6 +90,17 @@ const Navbar = () => {
                 >
                   Upload Files
                 </Link>
+                {isSubscribed && (
+                  <Link
+                    to="/subscription"
+                    className={`px-4 lg:px-6 py-2 rounded-lg text-[11px] lg:text-[12px] font-[700] uppercase transition-all duration-200 ${location.pathname === '/subscription'
+                        ? 'bg-[#25d366] text-[#003915] shadow-[0_0_15px_rgba(37,211,102,0.3)]'
+                        : 'bg-[#25d366]/10 text-[#25d366] hover:bg-[#25d366] hover:text-[#003915]'
+                      }`}
+                  >
+                    Subscription
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="text-[#ffb4ab] text-[11px] lg:text-[12px] font-[700] uppercase hover:bg-[#ffb4ab]/10 px-3 lg:px-4 py-2 rounded-lg transition-all"
@@ -153,6 +174,15 @@ const Navbar = () => {
                 >
                   Upload Files
                 </Link>
+                {isSubscribed && (
+                  <Link
+                    to="/subscription"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="w-full py-3 bg-[#25d366]/20 text-[#25d366] text-center rounded-lg font-[700] uppercase border border-[#25d366]/20"
+                  >
+                    Subscription
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full py-3 text-[#ffb4ab] border border-[#ffb4ab]/30 rounded-lg font-[700] uppercase"

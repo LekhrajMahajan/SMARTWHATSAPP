@@ -46,7 +46,21 @@ const UploadPage = () => {
   const [qrLoading, setQrLoading] = useState(false); // True while waiting for QR to appear
   
   // Subscription States
-  const [isSubscribed, setIsSubscribed] = useState(null); // null = checking, true/false
+  const [isSubscribed, setIsSubscribed] = useState(() => {
+    const cached = localStorage.getItem('isSubscribed');
+    return cached === 'true' ? true : (cached === 'false' ? false : null);
+  });
+  
+  const updateSubscriptionState = (val) => {
+    setIsSubscribed(val);
+    if (val !== null) {
+      localStorage.setItem('isSubscribed', String(val));
+    } else {
+      localStorage.removeItem('isSubscribed');
+    }
+    window.dispatchEvent(new Event('subscriptionUpdate'));
+  };
+
   const [subscribing, setSubscribing] = useState(null); // plan ID being activated (loading state)
 
   // ── Load Razorpay Checkout Script ──────────────────────────────────────────
@@ -192,13 +206,13 @@ const UploadPage = () => {
             cooldownUntil: statusData.cooldown_until
           });
           setIsWithinWindow(statusData.is_within_window);
-          setIsSubscribed(statusData.is_subscribed);
+          updateSubscriptionState(statusData.is_subscribed);
         } else {
-          setIsSubscribed(false);
+          updateSubscriptionState(false);
         }
       } catch (err) {
         console.error('Failed to load status:', err);
-        setIsSubscribed(false);
+        updateSubscriptionState(false);
       }
 
       try {
@@ -238,7 +252,7 @@ const UploadPage = () => {
         });
 
         if (verifyRes && verifyRes.success) {
-          setIsSubscribed(true);
+          updateSubscriptionState(true);
           alert("🎉 Plan activated successfully! (Developer/Mock Payment Approved)");
           
           // Refresh status details
@@ -281,7 +295,7 @@ const UploadPage = () => {
             });
 
             if (verifyRes && verifyRes.success) {
-              setIsSubscribed(true);
+              updateSubscriptionState(true);
               alert("🎉 Plan activated successfully! Welcome to your new plan.");
               
               // Refresh status
