@@ -320,10 +320,16 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
             # SEND BATCH
             is_first_message = True  # First message sends immediately, rest wait 15s
             contact_index = 0
+            last_send_complete_time = 0
+            
             for contact in batch:
                 if not is_first_message:
-                    print(f"[{username}] ⏳ Waiting exactly 15 seconds before next message...")
-                    time.sleep(15)
+                    elapsed = time.time() - last_send_complete_time
+                    if elapsed < 15:
+                        wait_time = 15 - elapsed
+                        print(f"[{username}] ⏳ Precise wait: {wait_time:.1f}s before next message...")
+                        time.sleep(wait_time)
+                
                 is_first_message = False
 
                 contact_index += 1
@@ -383,15 +389,23 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         pass
                         
                     try:
-                        driver.get(url)
+                        # Use SPA routing via JS instead of full page reload to save 20-30s
+                        driver.execute_script(f"""
+                            let a = document.createElement('a');
+                            a.href = '{url}';
+                            document.body.appendChild(a);
+                            let event = new MouseEvent('click', {{bubbles: true, cancelable: true, view: window}});
+                            a.dispatchEvent(event);
+                            document.body.removeChild(a);
+                        """)
                     except Exception as e:
-                        print(f"[{username}] ⚠️ Navigation failed, retrying: {e}")
+                        print(f"[{username}] ⚠️ SPA Navigation failed, retrying with get: {e}")
                         try:
                             alert = driver.switch_to.alert
                             alert.accept()
-                            driver.get(url)
                         except:
                             pass
+                        driver.get(url)
 
                     # Wait for the message box
                     message_box = None
@@ -487,9 +501,9 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     results["failed_count"] += 1
                     if on_status:
                         on_status(contact, "Failed")
-                    
-                    # Even if it fails, wait a bit to avoid hammering
-                    time.sleep(5)
+                
+                # Mark completion time for the NEXT iteration's 15-second gap check
+                last_send_complete_time = time.time()
 
             # AFTER BATCH
             print(f"[{username}] ✅ Batch completed.")
