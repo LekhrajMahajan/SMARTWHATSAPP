@@ -338,10 +338,8 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
             contact_index = 0
             for contact in batch:
                 if not is_first_message:
-                    # driver.get() inherently takes ~10-15s to reload the page on HuggingFace.
-                    # We reduce the explicit wait to 3s so the *total* gap between messages is ~15 seconds.
-                    print(f"[{username}] ⏳ Waiting 3s (plus page load time) before next message...")
-                    time.sleep(3)
+                    print(f"[{username}] ⏳ Waiting exactly 15 seconds before next message...")
+                    time.sleep(15)
                 is_first_message = False
 
                 contact_index += 1
@@ -442,16 +440,10 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                             if message_box:
                                 break
                             
-                            # 2. Check for invalid number modals
-                            page_text = driver.page_source.lower()
-                            invalid_triggers = [
-                                "phone number shared via url is invalid",
-                                "url is invalid",
-                                "is not on whatsapp",
-                                "invalid number"
-                            ]
+                            # 2. Check for invalid number modals quickly via xpath instead of slow page_source
+                            invalid_elements = driver.find_elements(By.XPATH, '//*[contains(text(), "is invalid") or contains(text(), "not on WhatsApp") or contains(text(), "invalid number")]')
                             
-                            if any(trigger in page_text for trigger in invalid_triggers):
+                            if invalid_elements:
                                 print(f"[{username}] ⚠️ Phone number {number} appears to be invalid on WhatsApp.")
                                 break
 
