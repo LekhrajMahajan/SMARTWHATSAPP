@@ -79,6 +79,7 @@ logs_collection = db.message_logs
 
 # Track active campaigns to prevent per-user concurrency issues
 active_campaigns = set()
+stop_requested_campaigns = set()
 
 @app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health_check():
@@ -399,6 +400,20 @@ def download_sample():
 
 
 # GET MESSAGE HISTORY
+@app.delete("/messages")
+async def clear_messages(current_user: dict = Depends(get_current_user)):
+    username = current_user["username"]
+    logs_collection.delete_many({"username": username})
+    return {"message": "All messages cleared successfully"}
+
+@app.post("/api/campaign/stop")
+async def stop_campaign(current_user: dict = Depends(get_current_user)):
+    username = current_user["username"]
+    if username in active_campaigns:
+        stop_requested_campaigns.add(username)
+        return {"success": True, "message": "Stop requested. Campaign will halt shortly."}
+    return {"success": False, "message": "No active campaign found."}
+
 @app.get("/messages")
 def get_messages(current_user: dict = Depends(get_current_user)):
 
@@ -772,6 +787,12 @@ async def upload_file(
                     main_loop
                 )
 
+                def check_stop():
+                    if username in stop_requested_campaigns:
+                        stop_requested_campaigns.remove(username)
+                        return True
+                    return False
+
                 # Execute in executor
                 await loop.run_in_executor(
                     None,
@@ -783,14 +804,15 @@ async def upload_file(
                         on_status=on_status_update,
                         logs_collection=logs_collection,
                         broadcast_func=broadcast_wrapper,
-                        users_collection=users_collection
+                        users_collection=users_collection,
+                        check_stop_func=check_stop
                     )
                 )
             except Exception as e:
                 print(f"[{username}] Campaign Error: {e}")
             finally:
-                if username in active_campaigns:
-                    active_campaigns.remove(username)
+                active_campaigns.discard(username)
+                stop_requested_campaigns.discard(username)
                 print(f"[{username}] Campaign task finished and lock released.")
 
         # Fire and forget the task

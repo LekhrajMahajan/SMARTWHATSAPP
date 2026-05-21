@@ -1,6 +1,6 @@
 // UploadPage.jsx - Main process page: upload Excel + write message + send + view logs
 import { useState, useEffect, useRef } from 'react';
-import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, subscribeToPlan, createRazorpayOrder, verifyPayment, BASE_URL } from '../api';
+import { uploadAndSend, fetchMessageLogs, downloadSampleCSV, clearMessageLogs, getStatus, subscribeToPlan, createRazorpayOrder, verifyPayment, stopCampaign, BASE_URL } from '../api';
 
 const ExpandableMessage = ({ text }) => {
   const [expanded, setExpanded] = useState(false);
@@ -899,24 +899,41 @@ const UploadPage = () => {
               <span className="font-mono tracking-widest">{formatCooldown(cooldown)}</span>
             </div>
           </div>
+        ) : loading ? (
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-4 animate-in fade-in zoom-in-95 duration-500">
+            <button
+              disabled
+              className="w-full sm:w-auto px-10 md:px-12 py-4 bg-[#25d366] text-[#003915] font-[700] text-xl rounded-xl flex items-center justify-center gap-3 opacity-50 cursor-not-allowed"
+            >
+              <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Processing...
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await stopCampaign();
+                  setResult({ success: true, text: '🛑 Stop requested. Campaign will halt momentarily...' });
+                } catch(e) {
+                  setResult({ success: false, text: '❌ Failed to stop: ' + e.message });
+                }
+              }}
+              className="w-full sm:w-auto px-8 md:px-10 py-4 bg-red-500 hover:bg-red-600 text-white font-[700] text-xl rounded-xl flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all hover:scale-105"
+            >
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>cancel</span>
+              Stop
+            </button>
+          </div>
         ) : (
           <button
             id="send-btn"
             onClick={handleSubmit}
-            disabled={loading || backendOnline === false || !isWithinWindow}
+            disabled={backendOnline === false || !isWithinWindow}
             className="w-full sm:w-auto px-10 md:px-16 py-4 bg-[#25d366] hover:bg-[#4ff07f] text-[#003915] font-[700] text-xl md:text-2xl rounded-xl flex items-center justify-center gap-3 transition-all duration-300 shadow-[0_0_25px_rgba(37,211,102,0.3)] hover:shadow-[0_0_40px_rgba(37,211,102,0.5)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 active:scale-95"
           >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Processing...
-              </>
-            ) : (
-              <>🚀 Send Message</>
-            )}
+            🚀 Send Message
           </button>
         )}
       </div>

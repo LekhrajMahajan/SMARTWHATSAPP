@@ -70,7 +70,7 @@ def wait_for_message_to_send(driver, wait, timeout=10):
         return False
 
 
-def send_messages(contacts, template, username="default", on_status=None, logs_collection=None, broadcast_func=None, users_collection=None):
+def send_messages(contacts, template, username="default", on_status=None, logs_collection=None, broadcast_func=None, users_collection=None, check_stop_func=None):
     """
     Sends messages with specific restrictions:
     - Only between 10 AM and 6 PM IST.
@@ -323,6 +323,17 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
             last_send_complete_time = 0
             
             for contact in batch:
+                if check_stop_func and check_stop_func():
+                    print(f"[{username}] 🛑 Stop requested by user. Halting campaign.")
+                    results["status"] = "stopped"
+                    if broadcast_func:
+                        broadcast_func({
+                            "type": "PROCESS_STOPPED",
+                            "data": {"message": "Campaign stopped by user."}
+                        })
+                    if driver: driver.quit()
+                    return results
+
                 contact_index += 1
                 contact_start_time = time.time()
                 results["total_attempted"] += 1
@@ -486,7 +497,22 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                         if elapsed_since_last_send < 15:
                             wait_time = 15 - elapsed_since_last_send
                             print(f"[{username}] ⏳ Precise wait: {wait_time:.1f}s before sending...")
-                            time.sleep(wait_time)
+                            
+                            # Sleep in smaller increments to remain responsive to stop requests
+                            for _ in range(int(wait_time)):
+                                if check_stop_func and check_stop_func():
+                                    print(f"[{username}] 🛑 Stop requested during wait. Halting campaign.")
+                                    results["status"] = "stopped"
+                                    if broadcast_func:
+                                        broadcast_func({
+                                            "type": "PROCESS_STOPPED",
+                                            "data": {"message": "Campaign stopped by user."}
+                                        })
+                                    if driver: driver.quit()
+                                    return results
+                                time.sleep(1)
+                            
+                            time.sleep(wait_time - int(wait_time))
                             
                     is_first_message = False
                     
@@ -537,7 +563,19 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                 if driver:
                     driver.quit()
                     driver = None
-                time.sleep(3600) # 1 hour wait
+                
+                # Sleep in 10-second intervals to allow interruption
+                for _ in range(360):
+                    if check_stop_func and check_stop_func():
+                        print(f"[{username}] 🛑 Stop requested during cooldown. Halting campaign.")
+                        results["status"] = "stopped"
+                        if broadcast_func:
+                            broadcast_func({
+                                "type": "PROCESS_STOPPED",
+                                "data": {"message": "Campaign stopped by user during cooldown."}
+                            })
+                        return results
+                    time.sleep(10)
             elif results["status"] != "completed":
                 break
         

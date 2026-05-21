@@ -194,3 +194,27 @@ export async function verifyPayment(paymentDetails) {
   return res.json();
 }
 
+/**
+ * POST /api/campaign/stop
+ * Stop an ongoing campaign
+ */
+export async function stopCampaign() {
+  const res = await fetch(`${BASE_URL}/api/campaign/stop`, {
+    method: 'POST',
+    headers: getAuthHeaders()
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return null;
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Stop campaign failed: ${text}`);
+  }
+
+  return res.json();
+}
+
