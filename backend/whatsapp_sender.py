@@ -216,9 +216,6 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     broadcast_func({"type": "QR_LOADING", "data": {}})
                     print(f"[{username}] 📡 Sent QR_LOADING signal to frontend")
 
-                # Wait a few seconds for WhatsApp Web to fully render the QR page
-                time.sleep(5)
-
                 # QR Code relay for headless mode
                 # QR selectors — from most specific to least specific
                 qr_selectors = [
@@ -231,30 +228,18 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                 
                 logged_in_selectors = ["//div[@id='pane-side']", "//div[@data-testid='chat-list']"]
 
-                initial_login_check_time = time.time()
-                while time.time() - initial_login_check_time < 15: # Increased wait to 15s to allow WhatsApp to load session
-                    is_already_logged_in = False
-                    for sel in logged_in_selectors:
-                        if driver.find_elements(By.XPATH, sel):
-                            is_already_logged_in = True
-                            break
-                    if is_already_logged_in:
-                        break
-                    time.sleep(1)
-                    
-                if is_already_logged_in:
-                    print(f"[{username}] ✅ Session already exists. Proceeding directly to send messages.")
-                    if broadcast_func:
-                        broadcast_func({"type": "LOGIN_SUCCESS", "data": {}})
-                        print(f"[{username}] 📡 Sent LOGIN_SUCCESS to frontend (Session restored)")
-                    # Stabilization wait just to be safe
-                    time.sleep(3)
-
                 login_check_iterations = 0
-                while login_check_iterations < 60:  # 5 minutes max (5s * 60)
+                is_already_logged_in = False
+                
+                while login_check_iterations < 150:  # ~5 minutes max (2s * 150)
                     try:
                         # Check if logged in
-                        if driver.find_elements(By.ID, "pane-side"):
+                        for sel in logged_in_selectors:
+                            if driver.find_elements(By.XPATH, sel):
+                                is_already_logged_in = True
+                                break
+                                
+                        if is_already_logged_in:
                             print(f"[{username}] ✅ WhatsApp Logged In Successfully")
                             
                             # Retrieve the linked WhatsApp number
@@ -314,7 +299,6 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                                         qr_found = True
                                         break
                             except Exception as sel_err:
-                                print(f"[{username}] Selector '{selector}' failed: {sel_err}")
                                 continue
 
                         if not qr_found:
@@ -323,11 +307,11 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     except Exception as e:
                         print(f"[{username}] Error during login check: {e}")
                     
-                    time.sleep(5)
+                    time.sleep(2)
                     login_check_iterations += 1
                 
                 # Final check after loop
-                if not driver.find_elements(By.ID, "pane-side"):
+                if not is_already_logged_in:
                     print(f"[{username}] ❌ Login timeout or failed")
                     if driver: driver.quit()
                     results["status"] = "login_failed"
