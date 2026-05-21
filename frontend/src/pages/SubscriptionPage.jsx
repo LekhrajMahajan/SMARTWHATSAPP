@@ -340,9 +340,7 @@ const SubscriptionPage = () => {
           }
         },
         prefill: {
-          name: localStorage.getItem('username') || '',
-          email: '',
-          contact: ''
+          name: localStorage.getItem('username') || 'User'
         },
         theme: {
           color: "#25d366"
