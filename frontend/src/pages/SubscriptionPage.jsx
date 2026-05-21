@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getStatus, createRazorpayOrder, verifyPayment } from '../api';
+import html2pdf from 'html2pdf.js';
 
 const INVOICE_DETAILS = {
   '1_month': {
@@ -87,250 +88,20 @@ const SubscriptionPage = () => {
     const invoiceDate = getInvoiceDate();
     const numberWords = numberToWords(invoiceMeta.total);
 
-    const printWindow = window.open('', '_blank', 'width=900,height=1000');
-    if (!printWindow) {
-      alert("Please allow pop-ups to download/print the invoice.");
-      return;
-    }
-
     const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Tax Invoice - ${invoiceNum}</title>
-        <meta charset="utf-8">
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
-        <style>
-          * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-          }
-          body {
-            font-family: 'Outfit', sans-serif;
-            color: #1c2e24;
-            background: #fff;
-            padding: 40px;
-            font-size: 14px;
-            line-height: 1.5;
-          }
-          .invoice-container {
-            max-width: 800px;
-            margin: 0 auto;
-            border: 1px solid #e2ebd5;
-            border-radius: 16px;
-            padding: 40px;
-            position: relative;
-            background: #fafdf8;
-            box-shadow: 0 4px 30px rgba(37, 211, 102, 0.03);
-          }
-          .invoice-header-bar {
-            height: 8px;
-            background: linear-gradient(90deg, #25d366 0%, #128c7e 100%);
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            border-top-left-radius: 16px;
-            border-top-right-radius: 16px;
-          }
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #e2ebd5;
-            padding-bottom: 20px;
-          }
-          .logo-area h1 {
-            font-size: 26px;
-            font-weight: 900;
-            color: #075e54;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            letter-spacing: -0.02em;
-          }
-          .logo-area p {
-            font-size: 12px;
-            color: #556c5f;
-            margin-top: 4px;
-          }
-          .invoice-title {
-            text-align: right;
-          }
-          .invoice-title h2 {
-            font-size: 28px;
-            font-weight: 800;
-            color: #075e54;
-            letter-spacing: -0.01em;
-          }
-          .invoice-title .badge {
-            display: inline-block;
-            background: #e1ffd8;
-            color: #0d7300;
-            border: 1px solid #a8e596;
-            font-size: 11px;
-            font-weight: 800;
-            padding: 4px 12px;
-            border-radius: 99px;
-            margin-top: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-          }
-          .meta-section {
-            display: grid;
-            grid-template-cols: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 35px;
-          }
-          .meta-box h3 {
-            font-size: 13px;
-            color: #075e54;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 8px;
-            font-weight: 700;
-            border-left: 3px solid #25d366;
-            padding-left: 8px;
-          }
-          .meta-box p {
-            font-size: 13px;
-            color: #3b4e43;
-            line-height: 1.6;
-          }
-          .meta-box .highlight {
-            font-weight: 600;
-            color: #1c2e24;
-          }
-          .table-container {
-            margin-bottom: 30px;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-          }
-          th {
-            background: #ecf5e7;
-            color: #075e54;
-            font-weight: 700;
-            padding: 12px 16px;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-          }
-          th:first-child {
-            border-top-left-radius: 8px;
-            border-bottom-left-radius: 8px;
-          }
-          th:last-child {
-            border-top-right-radius: 8px;
-            border-bottom-right-radius: 8px;
-            text-align: right;
-          }
-          td {
-            padding: 16px;
-            border-bottom: 1px solid #ecf5e7;
-            font-size: 13px;
-            color: #3b4e43;
-          }
-          td:last-child {
-            text-align: right;
-            font-weight: 600;
-          }
-          .totals-section {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 40px;
-          }
-          .totals-table {
-            width: 320px;
-          }
-          .totals-table tr td {
-            padding: 8px 12px;
-            border: none;
-          }
-          .totals-table tr td:last-child {
-            text-align: right;
-          }
-          .totals-table tr.grand-total td {
-            border-top: 2px solid #e2ebd5;
-            font-size: 18px;
-            font-weight: 900;
-            color: #075e54;
-            padding-top: 12px;
-          }
-          .words-box {
-            background: #f4f9f0;
-            border: 1px solid #e2ebd5;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 40px;
-            font-size: 12px;
-            color: #3b4e43;
-          }
-          .words-box span {
-            font-weight: 700;
-            color: #075e54;
-            text-transform: uppercase;
-            margin-right: 5px;
-          }
-          .footer-note {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 1px dashed #cddcc3;
-            padding-top: 20px;
-            font-size: 11px;
-            color: #7b9283;
-          }
-          .stamp-box {
-            text-align: right;
-            position: relative;
-          }
-          .stamp {
-            border: 2px dashed #25d366;
-            color: #128c7e;
-            display: inline-block;
-            font-weight: 800;
-            font-size: 12px;
-            padding: 6px 12px;
-            text-transform: uppercase;
-            transform: rotate(-3deg);
-            border-radius: 4px;
-            opacity: 0.85;
-            background: rgba(37, 211, 102, 0.05);
-          }
-          @media print {
-            body {
-              padding: 0;
-              background: #fff;
-            }
-            .invoice-container {
-              border: none;
-              box-shadow: none;
-              padding: 0;
-            }
-            .invoice-header-bar {
-              display: none;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-container">
-          <div class="invoice-header-bar"></div>
+      <div style="font-family: 'Outfit', sans-serif; color: #1c2e24; background: #fff; padding: 40px; font-size: 14px; line-height: 1.5; width: 800px; margin: 0 auto;">
+        <div style="border: 1px solid #e2ebd5; border-radius: 16px; padding: 40px; position: relative; background: #fafdf8;">
+          <div style="height: 8px; background: linear-gradient(90deg, #25d366 0%, #128c7e 100%); position: absolute; top: 0; left: 0; right: 0; border-top-left-radius: 16px; border-top-right-radius: 16px;"></div>
           
-          <div class="header">
-            <div class="logo-area">
-              <h1>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #e2ebd5; padding-bottom: 20px;">
+            <div>
+              <h1 style="font-size: 26px; font-weight: 900; color: #075e54; display: flex; align-items: center; gap: 8px; margin: 0;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 6px;">
                   <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12C2 13.91 2.538 15.695 3.47 17.218L2.056 21.932C2.013 22.073 2.054 22.227 2.16 22.327C2.242 22.404 2.35 22.443 2.459 22.443C2.498 22.443 2.538 22.438 2.577 22.426L7.42 20.912C8.825 21.615 10.378 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM17.151 15.006C16.945 15.485 16.143 15.897 15.702 15.961C15.344 16.012 14.869 16.046 13.332 15.42C11.366 14.619 10.096 12.639 9.998 12.51C9.901 12.381 9.202 11.464 9.202 10.513C9.202 9.562 9.697 9.097 9.893 8.899C10.04 8.752 10.285 8.683 10.52 8.683C10.598 8.683 10.67 8.687 10.735 8.69C10.929 8.699 11.026 8.711 11.153 9.014C11.312 9.394 11.698 10.334 11.745 10.429C11.792 10.524 11.815 10.643 11.752 10.769C11.689 10.895 11.637 10.966 11.542 11.077C11.448 11.188 11.345 11.322 11.259 11.417C11.164 11.522 11.059 11.634 11.171 11.827C11.283 12.019 11.67 12.651 12.241 13.16C12.977 13.816 13.58 14.024 13.776 14.105C13.923 14.166 14.098 14.152 14.204 14.039C14.337 13.897 14.999 13.125 15.093 12.991C15.187 12.857 15.281 12.88 15.408 12.928C15.535 12.975 16.216 13.31 16.352 13.378C16.488 13.446 16.578 13.479 16.611 13.535C16.644 13.591 16.644 13.884 16.562 14.121C16.48 14.358 16.143 14.767 15.702 14.961C15.261 15.155 14.776 15.084 14.776 15.084C14.776 15.084 17.357 14.527 17.151 15.006Z" fill="#25D366"/>
                 </svg>
                 Smart WhatsApp
               </h1>
-              <p>Automated WhatsApp Campaign Solutions</p>
+              <p style="font-size: 12px; color: #556c5f; margin-top: 4px;">Automated WhatsApp Campaign Solutions</p>
               <p style="color: #7b9283; font-size: 11px; margin-top: 8px;">
                 Seller:<br>
                 <strong>Smart WhatsApp Sender Inc.</strong><br>
@@ -340,9 +111,9 @@ const SubscriptionPage = () => {
               </p>
             </div>
             
-            <div class="invoice-title">
-              <h2>TAX INVOICE</h2>
-              <span class="badge">PAID</span>
+            <div style="text-align: right;">
+              <h2 style="font-size: 28px; font-weight: 800; color: #075e54; margin: 0;">TAX INVOICE</h2>
+              <span style="display: inline-block; background: #e1ffd8; color: #0d7300; border: 1px solid #a8e596; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 99px; margin-top: 6px; text-transform: uppercase;">PAID</span>
               <p style="font-size: 12px; color: #556c5f; margin-top: 10px; font-family: monospace;">
                 Invoice No: <strong>${invoiceNum}</strong><br>
                 Date: <strong>${invoiceDate}</strong>
@@ -350,101 +121,102 @@ const SubscriptionPage = () => {
             </div>
           </div>
           
-          <div class="meta-section">
-            <div class="meta-box">
-              <h3>Billed To:</h3>
-              <p class="highlight" style="font-size: 15px; margin-bottom: 2px;">${billingDetails.name || 'Customer'}</p>
-              ${billingDetails.company ? `<p>${billingDetails.company}</p>` : ''}
-              ${billingDetails.gstin ? `<p>GSTIN: <strong style="color: #075e54;">${billingDetails.gstin.toUpperCase()}</strong></p>` : ''}
-              ${billingDetails.address ? `<p style="white-space: pre-line; margin-top: 4px;">${billingDetails.address}</p>` : ''}
+          <div style="display: flex; gap: 30px; margin-bottom: 35px;">
+            <div style="flex: 1;">
+              <h3 style="font-size: 13px; color: #075e54; text-transform: uppercase; margin-bottom: 8px; border-left: 3px solid #25d366; padding-left: 8px;">Billed To:</h3>
+              <p style="font-size: 15px; font-weight: 600; color: #1c2e24; margin: 0 0 2px 0;">${billingDetails.name || 'Customer'}</p>
+              ${billingDetails.company ? `<p style="margin: 0; font-size: 13px;">${billingDetails.company}</p>` : ''}
+              ${billingDetails.gstin ? `<p style="margin: 0; font-size: 13px;">GSTIN: <strong style="color: #075e54;">${billingDetails.gstin.toUpperCase()}</strong></p>` : ''}
+              ${billingDetails.address ? `<p style="margin: 4px 0 0 0; font-size: 13px; white-space: pre-line;">${billingDetails.address}</p>` : ''}
             </div>
             
-            <div class="meta-box">
-              <h3>Payment details:</h3>
-              <p><span class="highlight">Payment Method:</span> UPI / Card (Razorpay)</p>
-              <p><span class="highlight">Transaction Status:</span> Successful</p>
-              <p><span class="highlight">Supply HSN/SAC:</span> 998311 (SaaS Services)</p>
-              <p><span class="highlight">Place of Supply:</span> ${billingDetails.gstin ? billingDetails.gstin.substring(0, 2) : 'State'}</p>
+            <div style="flex: 1;">
+              <h3 style="font-size: 13px; color: #075e54; text-transform: uppercase; margin-bottom: 8px; border-left: 3px solid #25d366; padding-left: 8px;">Payment details:</h3>
+              <p style="margin: 0; font-size: 13px;"><span style="font-weight: 600;">Payment Method:</span> UPI / Card</p>
+              <p style="margin: 0; font-size: 13px;"><span style="font-weight: 600;">Transaction Status:</span> Successful</p>
+              <p style="margin: 0; font-size: 13px;"><span style="font-weight: 600;">Supply HSN/SAC:</span> 998311 (SaaS)</p>
+              <p style="margin: 0; font-size: 13px;"><span style="font-weight: 600;">Place of Supply:</span> ${billingDetails.gstin ? billingDetails.gstin.substring(0, 2) : 'State'}</p>
             </div>
           </div>
           
-          <div class="table-container">
-            <table>
+          <div style="margin-bottom: 30px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
               <thead>
                 <tr>
-                  <th>Description of Service</th>
-                  <th style="text-align: center;">SAC</th>
-                  <th style="text-align: right;">Qty</th>
-                  <th style="text-align: right;">Rate</th>
-                  <th style="text-align: right;">Taxable Value</th>
+                  <th style="background: #ecf5e7; color: #075e54; padding: 12px 16px; font-size: 12px; text-transform: uppercase; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">Description of Service</th>
+                  <th style="background: #ecf5e7; color: #075e54; padding: 12px 16px; font-size: 12px; text-transform: uppercase; text-align: center;">SAC</th>
+                  <th style="background: #ecf5e7; color: #075e54; padding: 12px 16px; font-size: 12px; text-transform: uppercase; text-align: right;">Qty</th>
+                  <th style="background: #ecf5e7; color: #075e54; padding: 12px 16px; font-size: 12px; text-transform: uppercase; text-align: right;">Rate</th>
+                  <th style="background: #ecf5e7; color: #075e54; padding: 12px 16px; font-size: 12px; text-transform: uppercase; text-align: right; border-top-right-radius: 8px; border-bottom-right-radius: 8px;">Taxable Value</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>
+                  <td style="padding: 16px; border-bottom: 1px solid #ecf5e7;">
                     <strong>Bulk Message Campaign Subscription</strong><br>
                     <span style="font-size: 11px; color: #7b9283;">Smart WhatsApp Sender - ${invoiceMeta.name}</span>
                   </td>
-                  <td style="text-align: center; font-family: monospace;">998311</td>
-                  <td style="text-align: right;">1</td>
-                  <td style="text-align: right;">₹${invoiceMeta.base.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td style="text-align: right;">₹${invoiceMeta.base.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td style="padding: 16px; border-bottom: 1px solid #ecf5e7; text-align: center; font-family: monospace;">998311</td>
+                  <td style="padding: 16px; border-bottom: 1px solid #ecf5e7; text-align: right;">1</td>
+                  <td style="padding: 16px; border-bottom: 1px solid #ecf5e7; text-align: right;">₹${invoiceMeta.base.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td style="padding: 16px; border-bottom: 1px solid #ecf5e7; text-align: right; font-weight: 600;">₹${invoiceMeta.base.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           
-          <div class="totals-section">
-            <table class="totals-table">
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 40px;">
+            <table style="width: 320px; border-collapse: collapse;">
               <tr>
-                <td>Subtotal (Taxable Value):</td>
-                <td>₹${invoiceMeta.base.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td style="padding: 8px 12px;">Subtotal (Taxable Value):</td>
+                <td style="padding: 8px 12px; text-align: right; font-weight: 600;">₹${invoiceMeta.base.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td>CGST @ 9%:</td>
-                <td>₹${invoiceMeta.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td style="padding: 8px 12px;">CGST @ 9%:</td>
+                <td style="padding: 8px 12px; text-align: right; font-weight: 600;">₹${invoiceMeta.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td>SGST @ 9%:</td>
-                <td>₹${invoiceMeta.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td style="padding: 8px 12px;">SGST @ 9%:</td>
+                <td style="padding: 8px 12px; text-align: right; font-weight: 600;">₹${invoiceMeta.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
               </tr>
-              <tr class="grand-total">
-                <td>Grand Total:</td>
-                <td>₹${invoiceMeta.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+              <tr>
+                <td style="padding: 12px 12px 8px 12px; border-top: 2px solid #e2ebd5; font-size: 18px; font-weight: 900; color: #075e54;">Grand Total:</td>
+                <td style="padding: 12px 12px 8px 12px; border-top: 2px solid #e2ebd5; font-size: 18px; font-weight: 900; color: #075e54; text-align: right;">₹${invoiceMeta.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
               </tr>
             </table>
           </div>
           
-          <div class="words-box">
-            <span>Amount in Words:</span> ${numberWords}
+          <div style="background: #f4f9f0; border: 1px solid #e2ebd5; border-radius: 8px; padding: 15px; margin-bottom: 40px; font-size: 12px;">
+            <span style="font-weight: 700; color: #075e54; text-transform: uppercase; margin-right: 5px;">Amount in Words:</span> ${numberWords}
           </div>
           
-          <div class="footer-note">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #cddcc3; padding-top: 20px; font-size: 11px; color: #7b9283;">
             <div>
-              <p>Thank you for your business!</p>
-              <p style="margin-top: 4px;">For any billing queries, contact support@smartwhatsapp.com</p>
+              <p style="margin: 0;">Thank you for your business!</p>
+              <p style="margin: 4px 0 0 0;">For any billing queries, contact support@smartwhatsapp.com</p>
             </div>
             
-            <div class="stamp-box">
-              <div class="stamp">Digitally Verified</div>
-              <p style="font-size: 8px; color: #7b9283; margin-top: 5px;">Computer generated receipt.<br>No signature required.</p>
+            <div style="text-align: right; position: relative;">
+              <div style="border: 2px dashed #25d366; color: #128c7e; display: inline-block; font-weight: 800; font-size: 12px; padding: 6px 12px; text-transform: uppercase; transform: rotate(-3deg); border-radius: 4px; background: rgba(37, 211, 102, 0.05);">Digitally Verified</div>
+              <p style="font-size: 8px; margin-top: 5px;">Computer generated receipt.<br>No signature required.</p>
             </div>
           </div>
         </div>
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-            }, 300);
-          }
-        </script>
-      </body>
-      </html>
+      </div>
     `;
 
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+
+    const opt = {
+      margin: 0,
+      filename: `Tax_Invoice_${invoiceNum}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(container).save();
   };
 
   // Load status on mount
