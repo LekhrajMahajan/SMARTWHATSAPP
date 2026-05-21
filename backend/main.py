@@ -545,7 +545,7 @@ async def create_razorpay_order(request: Request, current_user: dict = Depends(g
             
         prices = {
             "1_month": 150000,    # ₹1,500
-            "3_months": 450000,   # ₹4,500
+            "3_months": 500000,   # ₹5,000
             "6_months": 750000    # ₹7,500
         }
         amount = prices[plan]
