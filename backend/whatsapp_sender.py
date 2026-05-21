@@ -398,6 +398,7 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                             a.dispatchEvent(event);
                             document.body.removeChild(a);
                         """)
+                        time.sleep(2.5) # Wait for SPA transition to unmount old chat before searching
                     except Exception as e:
                         print(f"[{username}] ⚠️ SPA Navigation failed, retrying with get: {e}")
                         try:
@@ -469,7 +470,21 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     except:
                         pass
                         
-                    message_box.click()
+                    try:
+                        message_box.click()
+                    except Exception as click_err:
+                        print(f"[{username}] ⚠️ Standard click failed, using JS click: {click_err}")
+                        try:
+                            if "stale" in str(click_err).lower():
+                                time.sleep(1)
+                                for xpath in box_selectors:
+                                    elements = driver.find_elements(By.XPATH, xpath)
+                                    if elements and elements[0].is_displayed():
+                                        message_box = elements[0]
+                                        break
+                            driver.execute_script("arguments[0].click();", message_box)
+                        except Exception as e:
+                            print(f"[{username}] JS click also failed: {e}")
                     time.sleep(0.5)
                     type_message_with_newlines(driver, message_box, message)
                     time.sleep(1.0)
