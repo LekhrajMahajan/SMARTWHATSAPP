@@ -89,8 +89,8 @@ const SubscriptionPage = () => {
     const numberWords = numberToWords(invoiceMeta.total);
 
     const htmlContent = `
-      <div style="font-family: 'Outfit', sans-serif; color: #1c2e24; background: #fff; padding: 40px; font-size: 14px; line-height: 1.5; width: 800px; margin: 0 auto;">
-        <div style="border: 1px solid #e2ebd5; border-radius: 16px; padding: 40px; position: relative; background: #fafdf8;">
+      <div style="font-family: 'Outfit', sans-serif; color: #1c2e24; background: #fff; padding: 20px; font-size: 14px; line-height: 1.5; width: 800px; box-sizing: border-box;">
+        <div style="border: 1px solid #e2ebd5; border-radius: 16px; padding: 40px; position: relative; background: #fafdf8; box-sizing: border-box;">
           <div style="height: 8px; background: linear-gradient(90deg, #25d366 0%, #128c7e 100%); position: absolute; top: 0; left: 0; right: 0; border-top-left-radius: 16px; border-top-right-radius: 16px;"></div>
           
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #e2ebd5; padding-bottom: 20px;">
@@ -209,11 +209,11 @@ const SubscriptionPage = () => {
     container.innerHTML = htmlContent;
 
     const opt = {
-      margin: 0,
+      margin: 0.1,
       filename: `Tax_Invoice_${invoiceNum}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(container).save();
