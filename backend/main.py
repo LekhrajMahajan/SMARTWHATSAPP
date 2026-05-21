@@ -60,6 +60,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
+    response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
+    return response
+
 @app.on_event("startup")
 async def startup():
     if REDIS_AVAILABLE:
