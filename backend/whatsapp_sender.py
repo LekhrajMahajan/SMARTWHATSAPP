@@ -323,15 +323,6 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
             last_send_complete_time = 0
             
             for contact in batch:
-                if not is_first_message:
-                    elapsed = time.time() - last_send_complete_time
-                    if elapsed < 15:
-                        wait_time = 15 - elapsed
-                        print(f"[{username}] ⏳ Precise wait: {wait_time:.1f}s before next message...")
-                        time.sleep(wait_time)
-                
-                is_first_message = False
-
                 contact_index += 1
                 contact_start_time = time.time()
                 results["total_attempted"] += 1
@@ -488,6 +479,17 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     time.sleep(0.5)
                     type_message_with_newlines(driver, message_box, message)
                     time.sleep(1.0)
+                    
+                    # Ensure exact 15 second gap BEFORE sending
+                    if not is_first_message:
+                        elapsed_since_last_send = time.time() - last_send_complete_time
+                        if elapsed_since_last_send < 15:
+                            wait_time = 15 - elapsed_since_last_send
+                            print(f"[{username}] ⏳ Precise wait: {wait_time:.1f}s before sending...")
+                            time.sleep(wait_time)
+                            
+                    is_first_message = False
+                    
                     # Use ActionChains to send the ENTER key. This is a best practice for Lexical/React editors
                     # because it does not hold a reference to the DOM element, avoiding StaleElementReferenceExceptions
                     # when the message box re-renders instantly upon sending.
@@ -506,6 +508,8 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     # Confirm send
                     wait_for_message_to_send(driver, send_wait)
                     
+                    last_send_complete_time = time.time() # Mark EXACT time of message sent
+                    
                     print(f"[{username}] ✅ Message sent to {name}")
                     results["sent_count"] += 1
                     if on_status:
@@ -516,9 +520,9 @@ def send_messages(contacts, template, username="default", on_status=None, logs_c
                     results["failed_count"] += 1
                     if on_status:
                         on_status(contact, "Failed")
-                
-                # Mark completion time for the NEXT iteration's 15-second gap check
-                last_send_complete_time = time.time()
+                    
+                    # Mark completion time even on failure so we don't carry over massive waits
+                    last_send_complete_time = time.time()
 
             # AFTER BATCH
             print(f"[{username}] ✅ Batch completed.")
