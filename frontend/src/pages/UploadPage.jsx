@@ -551,7 +551,7 @@ const UploadPage = () => {
               <h3 className="text-xl font-bold text-[#dce5d8] mb-2">3 Months Plan</h3>
               <p className="text-sm text-[#bbcbb9]/70 mb-6">Best for growing businesses & marketing.</p>
               <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-5xl font-extrabold text-[#25d366]">₹5,000</span>
+                <span className="text-5xl font-extrabold text-[#25d366]">₹4,500</span>
                 <span className="text-xs text-[#bbcbb9]/60">/ 3 months</span>
               </div>
               <ul className="space-y-4 mb-8 text-sm text-[#bbcbb9]">

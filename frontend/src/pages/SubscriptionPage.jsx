@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getStatus, createRazorpayOrder, verifyPayment } from '../api';
+
 const INVOICE_DETAILS = {
   '1_month': {
     name: '1 Month Plan',
@@ -8,10 +12,10 @@ const INVOICE_DETAILS = {
   },
   '3_months': {
     name: '3 Months Plan',
-    base: 4237.28,
-    cgst: 381.36,
-    sgst: 381.36,
-    total: 5000.00
+    base: 3813.56,
+    cgst: 343.22,
+    sgst: 343.22,
+    total: 4500.00
   },
   '6_months': {
     name: '6 Months Plan',
@@ -24,7 +28,7 @@ const INVOICE_DETAILS = {
 
 const numberToWords = (num) => {
   if (num === 1500) return 'Rupees One Thousand Five Hundred Only';
-  if (num === 5000) return 'Rupees Five Thousand Only';
+  if (num === 4500) return 'Rupees Four Thousand Five Hundred Only';
   if (num === 7500) return 'Rupees Seven Thousand Five Hundred Only';
   return '';
 };
@@ -846,7 +850,7 @@ const SubscriptionPage = () => {
                 <h3 className="text-lg font-bold text-[#dce5d8] mb-1">3 Months Plan</h3>
                 <p className="text-xs text-[#bbcbb9]/70 mb-6">Best for growing businesses & marketing.</p>
                 <div className="flex items-baseline gap-1 mb-8">
-                  <span className="text-4xl font-black text-[#25d366]">₹5,000</span>
+                  <span className="text-4xl font-black text-[#25d366]">₹4,500</span>
                   <span className="text-xs text-[#bbcbb9]/60">/ 3 months</span>
                 </div>
                 <ul className="space-y-3 mb-8 text-xs text-[#bbcbb9]">
