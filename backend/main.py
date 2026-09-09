@@ -209,7 +209,8 @@ def send_verification_email(email: str, token: str, base_url: str = None):
             <p>{verify_url}</p>
           </body>
         </html>
-        """
+        """,
+        "text": f"Please verify your email address by visiting this link: {verify_url}"
     }
     
     headers = {
@@ -220,8 +221,11 @@ def send_verification_email(email: str, token: str, base_url: str = None):
     try:
         # Port 443 (HTTPS) is NEVER blocked by HuggingFace!
         response = requests.post(url, json=payload, headers=headers, timeout=15)
-        if response.status_code in [200, 202]:
-            print(f"✅ Verification email sent to {email} via Mailtrap Dashboard")
+        response_data = response.json() if response.text else {}
+        if response.status_code in [200, 202] and response_data.get("success") is not False:
+            print(f"✅ Verification email sent to {email} via Mailtrap API")
+            print(f"ℹ️ Mailtrap Response: {response.text}")
+            print(f"ℹ️ NOTE: If you don't see it on the dashboard, please verify that your Mailtrap Inbox ID in .env matches the one on the Mailtrap website (Current ID: {mailtrap_inbox_id})")
         else:
             print(f"❌ Failed to send email via Mailtrap. Status: {response.status_code}, Response: {response.text}")
     except Exception as e:
