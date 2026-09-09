@@ -184,52 +184,42 @@ def send_verification_email(email: str, token: str, base_url: str = None):
         
     verify_url = f"{backend_url}/verify-email/{token}"
     
-    # --- MAILTRAP HTTP API (SANDBOX TESTING) ---
+    # --- MAILTRAP SDK (LIVE SENDING API) ---
+    import mailtrap as mt
     mailtrap_token = os.getenv("MAILTRAP_TOKEN")
-    mailtrap_inbox_id = os.getenv("MAILTRAP_INBOX_ID")
     
-    if not mailtrap_token or not mailtrap_inbox_id:
-        print("CRITICAL ERROR: MAILTRAP_TOKEN or MAILTRAP_INBOX_ID is missing! Please add them to your .env or HuggingFace Secrets.")
+    if not mailtrap_token:
+        print("CRITICAL ERROR: MAILTRAP_TOKEN is missing! Please add it to your .env or HuggingFace Secrets.")
         return
         
-    url = f"https://sandbox.api.mailtrap.io/api/send/{mailtrap_inbox_id}"
-    
-    payload = {
-        "to": [{"email": email}],
-        "from": {"email": "noreply@smartwhatsapp.com", "name": "Smart WhatsApp Sender"},
-        "subject": "Please verify your email address",
-        "html": f"""
-        <html>
-          <body>
-            <h2>Welcome to Smart WhatsApp Sender!</h2>
-            <p>Please click the link below to verify your email address:</p>
-            <a href="{verify_url}">Verify Email</a>
-            <br><br>
-            <p>Or paste this link into your browser:</p>
-            <p>{verify_url}</p>
-          </body>
-        </html>
-        """,
-        "text": f"Please verify your email address by visiting this link: {verify_url}"
-    }
-    
-    headers = {
-        "Authorization": f"Bearer {mailtrap_token}",
-        "Content-Type": "application/json"
-    }
-    
     try:
-        # Port 443 (HTTPS) is NEVER blocked by HuggingFace!
-        response = requests.post(url, json=payload, headers=headers, timeout=15)
-        response_data = response.json() if response.text else {}
-        if response.status_code in [200, 202] and response_data.get("success") is not False:
-            print(f"✅ Verification email sent to {email} via Mailtrap API")
-            print(f"ℹ️ Mailtrap Response: {response.text}")
-            print(f"ℹ️ NOTE: If you don't see it on the dashboard, please verify that your Mailtrap Inbox ID in .env matches the one on the Mailtrap website (Current ID: {mailtrap_inbox_id})")
-        else:
-            print(f"❌ Failed to send email via Mailtrap. Status: {response.status_code}, Response: {response.text}")
+        mail = mt.Mail(
+            sender=mt.Address(email="hello@demomailtrap.co", name="Smart WhatsApp Sender"),
+            to=[mt.Address(email=email)],
+            subject="Please verify your email address",
+            text=f"Please verify your email address by visiting this link: {verify_url}",
+            html=f"""
+            <html>
+              <body>
+                <h2>Welcome to Smart WhatsApp Sender!</h2>
+                <p>Please click the link below to verify your email address:</p>
+                <a href="{verify_url}">Verify Email</a>
+                <br><br>
+                <p>Or paste this link into your browser:</p>
+                <p>{verify_url}</p>
+              </body>
+            </html>
+            """,
+            category="Verification Email",
+        )
+
+        client = mt.MailtrapClient(token=mailtrap_token)
+        response = client.send(mail)
+        print(f"✅ Verification email sent to {email} via Mailtrap SDK")
+        print(f"ℹ️ Mailtrap Response: {response}")
+        print("ℹ️ NOTE: Check your sent logs at https://mailtrap.io/sending/email_logs")
     except Exception as e:
-        print(f"❌ Network Error calling Mailtrap API: {e}")
+        print(f"❌ Error sending email via Mailtrap SDK: {e}")
 
 # AUTH ROUTES
 @app.post("/register")
