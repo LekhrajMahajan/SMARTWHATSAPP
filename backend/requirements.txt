@@ -13,4 +13,4 @@ redis==4.6.0
 fastapi-cache2[redis]==0.2.1
 python-dotenv==1.0.1
 slowapi==0.1.9
-mailtrap==3.4.1
+mailtrap==2.10.0
