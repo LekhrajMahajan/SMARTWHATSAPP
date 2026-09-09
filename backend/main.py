@@ -184,12 +184,13 @@ def send_verification_email(email: str, token: str, base_url: str = None):
         
     verify_url = f"{backend_url}/verify-email/{token}"
     
-    # --- MAILTRAP SDK (LIVE SENDING API) ---
+    # --- MAILTRAP SDK (SANDBOX) ---
     import mailtrap as mt
     mailtrap_token = os.getenv("MAILTRAP_TOKEN")
+    mailtrap_inbox_id = os.getenv("MAILTRAP_INBOX_ID")
     
-    if not mailtrap_token:
-        print("CRITICAL ERROR: MAILTRAP_TOKEN is missing! Please add it to your .env or HuggingFace Secrets.")
+    if not mailtrap_token or not mailtrap_inbox_id:
+        print("CRITICAL ERROR: MAILTRAP_TOKEN or MAILTRAP_INBOX_ID is missing! Please add them to your .env or HuggingFace Secrets.")
         return
         
     try:
@@ -213,11 +214,15 @@ def send_verification_email(email: str, token: str, base_url: str = None):
             category="Verification Email",
         )
 
-        client = mt.MailtrapClient(token=mailtrap_token)
+        client = mt.MailtrapClient(
+            token=mailtrap_token,
+            sandbox=True,
+            inbox_id=mailtrap_inbox_id
+        )
         response = client.send(mail)
         print(f"✅ Verification email sent to {email} via Mailtrap SDK")
         print(f"ℹ️ Mailtrap Response: {response}")
-        print("ℹ️ NOTE: Check your sent logs at https://mailtrap.io/sending/email_logs")
+        print("ℹ️ NOTE: Check your sent logs in the Mailtrap Sandbox Dashboard")
     except Exception as e:
         print(f"❌ Error sending email via Mailtrap SDK: {e}")
 
